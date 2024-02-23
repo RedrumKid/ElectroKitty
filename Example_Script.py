@@ -20,24 +20,24 @@ T=293 #K
 nx=20
 
 # Mechanism string written in full
-mechanism="E:a=b "
+mechanism="E:a=b \n C: b=c \n C:b+*-b* \n E:b*=d*"
 # Number of dissolved species, must be updated so to not brick the simulation
-num_bulk_spec=1
+num_bulk_spec=3
 
 # Constants given for adsorption and reaction on the surface
 # One constant for ireversible, two for reversible
 Ads_c=[
-        # [10]
+        [10]
         ]
 # Constants for the bulk reaction
 B_c=[
-        # [10,1]
+        [10,1]
       ]
 # Electrochemical constants: alpha, k0, E0'
 # Electrochemical constant always take 3, regerdles of reversibility
 ec_c=[
       [0.5,10**2,0], # none, m/s, V 
-      # [0.5,100,-0.15]
+      [0.5,100,-0.15]
       ]
 
 # The diffusion constants for the dissolved species
@@ -54,8 +54,8 @@ si=[0.1/36, nx]
 # Initial condition: first list initital surface occupations, second a list of initial condition functions, reccomend use of the uniform function 
 # uniform function takes in the value of the initial concentration and give the correct way for the simulator to understand the given list
 spec_info=[
-    [], #[mol/m^2]
-    [uniform(1)] #[mol/m^3]
+    [10**-5,0,0], #[mol/m^2]
+    [uniform(1),uniform(0),uniform(0)] #[mol/m^3]
     ]
 
 # Constants used in describing the potential program
@@ -82,3 +82,87 @@ plt.plot(E,i)
 plt.ylabel("i [A]")
 plt.xlabel("E [V]")
 plt.show()
+
+# Functions for compting harmonics for ACV, advanced features, requieres more time points
+# Uncomment for use
+
+# sp,freq,i_har=FFT_analysis(np.array([E,i,t]).T, freq, 5, np.ones(8))
+# Harmonic_plots(i_har, t)
+
+# A way to simulate impedance 
+# Must still be chacked and verified
+# Uncomment to use, note that it is slow
+
+# freqs=np.logspace(-3,4,40)
+# currents=[]
+# potentials=[]
+# for freq in freqs:
+#     # freq=10**fr
+#     t=np.linspace(0,10/freq,201)
+#     E=0.005*np.sin(2*np.pi*freq*t)-0.
+    
+#     dt=t[1]
+    
+#     mechanism="E:a=b"
+
+#     Ads_c=[
+#             # [10]
+#             ]
+
+#     B_c=[
+#            # [10,1]
+#           ]
+
+#     ec_c=[
+#           [0.5,0*10**2,0],
+#             # [0.5,100,0]
+#           ]
+
+#     D=10**-9*np.ones(2)
+
+#     cell_c=[293, 10, 1*10**-4, 10**-4]
+
+#     si=[0.1/36,15]
+
+#     spec_info=[
+#         [],
+#         [uniform(0.5), uniform(0.5)]
+#         ]
+
+#     # E,t=V_potencial(0.3,-0.3,0.1,0.1,9,10000,96485/8.314/293)
+
+#     E,i,t=simulator_Main_loop(mechanism, [Ads_c, B_c, ec_c, cell_c, D], si, t, spec_info, E)
+#     currents.append(i)
+#     potentials.append(E)
+    
+# r=[]
+# im=[]
+# for i in range(len(freqs)):
+#     j=np.fft.fft(currents[i])
+#     e=np.fft.fft(potentials[i])
+#     impedance=j/e
+#     # impedance=0.005/j
+#     # plt.plot(e)
+#     # plt.plot(j)
+#     # j=j[10]
+#     # e=e[10]
+#     # plt.plot(impedance[2:])
+#     r.append(impedance[10].real)
+#     im.append(impedance[10].imag)
+
+# r=np.array(r)
+# im=np.array(im)
+# plt.plot(r,im)
+
+
+
+
+
+
+
+
+
+
+
+
+
