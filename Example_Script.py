@@ -20,24 +20,24 @@ T=293 #K
 nx=20
 
 # Mechanism string written in full
-mechanism="E:a=b \n C: b=c \n C:b+*-b* \n E:b*=d*"
+mechanism="E:a=b "
 # Number of dissolved species, must be updated so to not brick the simulation
-num_bulk_spec=3
+num_bulk_spec=1
 
 # Constants given for adsorption and reaction on the surface
 # One constant for ireversible, two for reversible
 Ads_c=[
-        [10]
+        # [10]
         ]
 # Constants for the bulk reaction
 B_c=[
-        [10,1]
+        # [10,1]
       ]
 # Electrochemical constants: alpha, k0, E0'
 # Electrochemical constant always take 3, regerdles of reversibility
 ec_c=[
       [0.5,10**2,0], # none, m/s, V 
-      [0.5,100,-0.15]
+      # [0.5,100,-0.15]
       ]
 
 # The diffusion constants for the dissolved species
@@ -54,8 +54,8 @@ si=[0.1/36, nx]
 # Initial condition: first list initital surface occupations, second a list of initial condition functions, reccomend use of the uniform function 
 # uniform function takes in the value of the initial concentration and give the correct way for the simulator to understand the given list
 spec_info=[
-    [10**-5,0,0], #[mol/m^2]
-    [uniform(1),uniform(0),uniform(0)] #[mol/m^3]
+    [], #[mol/m^2]
+    [uniform(1)] #[mol/m^3]
     ]
 
 # Constants used in describing the potential program
