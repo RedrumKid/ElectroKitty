@@ -17,27 +17,27 @@ R=8.314 #J/mol/K
 T=293 #K
 
 # Number of points in the spatial direction
-nx=20
+nx=40
 
 # Mechanism string written in full
-mechanism="E:a=b \n C: b=c \n C:b+*-b* \n E:b*=d*"
+mechanism="E:a=b"
 # Number of dissolved species, must be updated so to not brick the simulation
-num_bulk_spec=3
+num_bulk_spec=2
 
 # Constants given for adsorption and reaction on the surface
 # One constant for ireversible, two for reversible
 Ads_c=[
-        [10]
+        # [10]
         ]
 # Constants for the bulk reaction
 B_c=[
-        [10,1]
+        # [10,1]
       ]
 # Electrochemical constants: alpha, k0, E0'
 # Electrochemical constant always take 3, regerdles of reversibility
 ec_c=[
       [0.5,10**2,0], # none, m/s, V 
-      [0.5,100,-0.15]
+      # [0.5,100,-0.15]
       ]
 
 # The diffusion constants for the dissolved species
@@ -45,17 +45,20 @@ ec_c=[
 D=10**-9*np.ones(num_bulk_spec)
 
 # Constants describing the cell: Temperature, Ru, Cdl, A
-cell_c=[T, 30, 1*10**-4, 10**-4] # K, Ohm , F/m^2, m^2
+cell_c=[T, 0, 0*10**-5, 10**-4] # K, Ohm , F/m^2, m^2
+
+rot_freq=15 # Hz
+viscosity=10**-5 #m^2/s
 
 # Constants describing the x direction: dx/xmax, nx
-si=[0.1/36, nx]
+si=[0.01/36, nx, viscosity, rot_freq]
 
 
 # Initial condition: first list initital surface occupations, second a list of initial condition functions, reccomend use of the uniform function 
 # uniform function takes in the value of the initial concentration and give the correct way for the simulator to understand the given list
 spec_info=[
-    [10**-5,0,0], #[mol/m^2]
-    [uniform(1),uniform(0),uniform(0)] #[mol/m^3]
+    [], #[mol/m^2]
+    [uniform(1),uniform(0)] #[mol/m^3]
     ]
 
 # Constants used in describing the potential program
@@ -81,7 +84,11 @@ plt.title("Example CV")
 plt.plot(E,i)
 plt.ylabel("i [A]")
 plt.xlabel("E [V]")
+plt.hlines(-0.62*F*cell_c[-1]*(D[0])**(2/3)*np.sqrt(2*np.pi*rot_freq)*(viscosity)**(-1/6),Ef,Ei)
 plt.show()
+
+print("Show accuracy of simulation [%]: ")
+print((-0.62*F*cell_c[-1]*(D[0])**(2/3)*np.sqrt(2*np.pi*rot_freq)*(viscosity)**(-1/6)-min(i))/(-0.62*F*cell_c[-1]*(D[0])**(2/3)*np.sqrt(2*np.pi*rot_freq)*(viscosity)**(-1/6)))
 
 # Functions for compting harmonics for ACV, advanced features, requieres more time points
 # Uncomment for use

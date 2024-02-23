@@ -331,15 +331,20 @@ def calc_main_coef(x,dt,D,nx,B):
         
         weights=Fornberg_weights(x[i],x[i-1:i+3],4,2)
         
-        alfa1=weights[0,2]-(B*x[i]**2)*weights[0,1]
-        alfa2=weights[1,2]-(B*x[i]**2)*weights[1,1]
-        alfa3=weights[2,2]-(B*x[i]**2)*weights[2,1]
-        alfa4=weights[3,2]-(B*x[i]**2)*weights[3,1]
+        alfa1d=weights[0,2]
+        alfa2d=weights[1,2]
+        alfa3d=weights[2,2]
+        alfa4d=weights[3,2]
         
-        a1.append(-alfa1*D*dt)
-        a2.append(-alfa2*D*dt+1)
-        a3.append(-alfa3*D*dt)
-        a4.append(-alfa4*D*dt)
+        alfa1v=-(B*x[i]**2)*weights[0,1]
+        alfa2v=-(B*x[i]**2)*weights[1,1]
+        alfa3v=-(B*x[i]**2)*weights[2,1]
+        alfa4v=-(B*x[i]**2)*weights[3,1]
+        
+        a1.append((-alfa1d*D-alfa1v)*dt)
+        a2.append((-alfa2d*D-alfa2v)*dt+1)
+        a3.append((-alfa3d*D-alfa3v)*dt)
+        a4.append((-alfa4d*D-alfa4v)*dt)
     
     return np.array([np.array(a1),np.array(a2),np.array(a3),np.array(a4)])
 
@@ -468,7 +473,10 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
     else:
         x=Space_ranges(Time[-1], f, 1, Spatial_info[0], Spatial_info[1])
     
-    a=calc_main_coef(x, dt, Diffusion_const, len(x)-2, 0.0)
+    viscosity, ni = Spatial_info[2:]
+    velocity_c=-0.51/np.sqrt(viscosity)*(2*np.pi*ni)**1.5
+    
+    a=calc_main_coef(x, dt, Diffusion_const, len(x)-2, velocity_c)
     
     theta=np.array(Species_information[0])
     
@@ -476,7 +484,7 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
     for i in range(len(spec[1])):
         c[:,i]=Species_information[1][i](x)
     bound2=c[-1,:] 
-    bound1=calc_boundary_condition(x, 0, Diffusion_const, 3, 0)
+    bound1=calc_boundary_condition(x, 0, Diffusion_const, 3, velocity_c)
     
     
     c=c.reshape((1,n*len(x)))[0,:]
