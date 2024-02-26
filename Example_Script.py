@@ -44,8 +44,8 @@ ec_c=[
 # This can be any list containing the constants, must be of lenghth n_spec
 D=10**-9*np.ones(num_bulk_spec)
 
-viscosity=10**-5
-rot_freq=15
+viscosity=10**-5 #m^2/s
+rot_freq=15 #Hz
 
 # Constants describing the cell: Temperature, Ru, Cdl, A
 cell_c=[T, 30, 1*10**-4, 10**-4] # K, Ohm , F/m^2, m^2
