@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import sys
 import scipy.optimize as sciop
 import scipy.signal as scisi
+from numba import jit
 
 ################# Functions for parsing mechanism
 
@@ -20,7 +21,7 @@ import scipy.signal as scisi
 # the reaction is one-directional
 # Besides the characters, \n, +, =, -, any character or sequence of characters can be used,
 # With the caveat that all spaces are discraded
-
+# @jit(nopython=True)
 def update_species_lists(line, bulk_spec, ads_spec, string):
     # A function for correctly identifying specis and sorting them into their respective lists
     for reac_fb in line.split(string):
