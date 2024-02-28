@@ -27,9 +27,10 @@ num_bulk_spec=3
 
 # Constants given for adsorption and reaction on the surface
 # One constant for ireversible, two for reversible
+# units are as the apply, some examples are given
 kin_const=[
-    [0.5,10**2,0],
-    [10,1],
+    [0.5,10**2,0], # /, m/s, V
+    [10,1], # /s
     [10],
     [0.5,100,-0.15]
     ]

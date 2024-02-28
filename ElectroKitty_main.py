@@ -123,9 +123,7 @@ def Parse_mechanism(string):
     species_list=[ads_spec,bulk_spec]
     
     reaction_index=[[],[],[]]
-    # print(a)
     for i in range(len(a)):
-        # print(i)
         line=a[i]
         if "=" in line:
             f,b=line[2:].split("=")
@@ -477,16 +475,10 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
     n1=len(spec[0])
     
     kin_const, cell_const, Diffusion_const = Constants
-    
-    print(r_ind)
-    print(index)
+
     ads_const=create_const_list(r_ind[0], kin_const)
     bulk_const=create_const_list(r_ind[1], kin_const)
     EC_const=create_const_list(r_ind[2], kin_const)
-    
-    print(ads_const)
-    print(bulk_const)
-    print(EC_const)
     
     T,Ru,Cdl,A=cell_const
     f=F/R/T
