@@ -17,7 +17,7 @@ R=8.314 #J/mol/K
 T=293 #K
 
 # Number of points in the spatial direction
-nx=40
+nx=20
 
 # Mechanism string written in full
 mechanism="E:a=b \n C: b=c \n C:b+*-b* \n E:b*=d*"
@@ -45,7 +45,7 @@ ec_c=[
 D=10**-9*np.ones(num_bulk_spec)
 
 viscosity=10**-5 #m^2/s
-rot_freq=15 #Hz
+rot_freq=0 #Hz
 
 # Constants describing the cell: Temperature, Ru, Cdl, A
 cell_c=[T, 30, 1*10**-4, 10**-4] # K, Ohm , F/m^2, m^2
