@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import sys
 import scipy.optimize as sciop
 import scipy.signal as scisi
-from numba import jit
+from numba import njit, prange
 
 ################# Functions for parsing mechanism
 
@@ -21,7 +21,7 @@ from numba import jit
 # the reaction is one-directional
 # Besides the characters, \n, +, =, -, any character or sequence of characters can be used,
 # With the caveat that all spaces are discraded
-# @jit(nopython=True)
+
 def update_species_lists(line, bulk_spec, ads_spec, string):
     # A function for correctly identifying specis and sorting them into their respective lists
     for reac_fb in line.split(string):
@@ -62,7 +62,8 @@ def index_list(line, species_list):
         
     return f_index
 
-def update_index_lists(ads_index, bulk_index , ec_index, f,b, line, reaction_types_ads, reaction_types_ec, reaction_types_bulk, Type, len_ads):
+def update_index_lists(ads_index, bulk_index , ec_index, f,b, line,
+                       reaction_types_ads, reaction_types_ec, reaction_types_bulk, Type, len_ads, reaction_index, indicator):
     
     # A function, which takes the index lists and updates them accordingly,
     # separating the reactions into either into adsorbtion, bulk or electrochemical
@@ -70,9 +71,11 @@ def update_index_lists(ads_index, bulk_index , ec_index, f,b, line, reaction_typ
     if "*" in line and line[:2]=="C:":
         ads_index.append([f,b])
         reaction_types_ads.append(Type)
+        reaction_index[0].append(indicator)
     elif line[:2]=="E:":
         ec_index.append([f,b])
         reaction_types_ec.append(Type)
+        reaction_index[2].append(indicator)
     else:
         for i in range(len(f)):
             f[i]-=len_ads
@@ -80,7 +83,8 @@ def update_index_lists(ads_index, bulk_index , ec_index, f,b, line, reaction_typ
             b[i]-=len_ads
         bulk_index.append([f,b])
         reaction_types_bulk.append(Type)
-    return ads_index, bulk_index, ec_index, reaction_types_ads, reaction_types_ec, reaction_types_bulk
+        reaction_index[1].append(indicator)
+    return ads_index, bulk_index, ec_index, reaction_types_ads, reaction_types_ec, reaction_types_bulk, reaction_index
 
 def Parse_mechanism(string):
     
@@ -118,23 +122,32 @@ def Parse_mechanism(string):
 
     species_list=[ads_spec,bulk_spec]
     
-    for line in a:
+    reaction_index=[[],[],[]]
+    # print(a)
+    for i in range(len(a)):
+        # print(i)
+        line=a[i]
         if "=" in line:
             f,b=line[2:].split("=")
             f_ind=index_list(f, species_list)
             b_ind=index_list(b, species_list)
-            ads_index, bulk_index, ec_index, reaction_types_ads,reaction_types_ec,reaction_types_bulk = update_index_lists(ads_index, bulk_index, ec_index, f_ind, b_ind, line,
-                                                                                                                           reaction_types_ads,reaction_types_ec,reaction_types_bulk,True, len(species_list[0]))
+            ads_index, bulk_index, ec_index, reaction_types_ads,reaction_types_ec,reaction_types_bulk,reaction_index = update_index_lists(
+                ads_index, bulk_index, ec_index, f_ind, b_ind, line,
+                reaction_types_ads,
+                reaction_types_ec,reaction_types_bulk,True, len(species_list[0]), reaction_index, i)
+            
         elif "-" in line:
             f,b=line[2:].split("-")
             f_ind=index_list(f, species_list)
             b_ind=index_list(b, species_list)
-            ads_index, bulk_index, ec_index, reaction_types_ads,reaction_types_ec,reaction_types_bulk = update_index_lists(ads_index, bulk_index, ec_index, f_ind, b_ind, line,
-                                                                                                                           reaction_types_ads,reaction_types_ec,reaction_types_bulk,False, len(species_list[0]))
+            ads_index, bulk_index, ec_index, reaction_types_ads,reaction_types_ec,reaction_types_bulk,reaction_index = update_index_lists(
+                ads_index, bulk_index, ec_index, f_ind, b_ind, line,
+                reaction_types_ads,
+                reaction_types_ec,reaction_types_bulk,False, len(species_list[0]), reaction_index, i)
         else:
             print("Mechanism error: cannot index mechanism")
    
-    return species_list, [ads_index, bulk_index, ec_index], [reaction_types_ads, reaction_types_bulk, reaction_types_ec]
+    return species_list, [ads_index, bulk_index, ec_index], [reaction_types_ads, reaction_types_bulk, reaction_types_ec], reaction_index
 
 ####################### Functions for generating potential programs
 
@@ -166,12 +179,12 @@ def get_kinetic_constants(k_vector, kinetic_types):
             sys.exit()
     
     return k_vector
-
+# @jit(nopython=True)
 def iterate_Over_conc(step, c, term):
     for i in step:
         term*=c[i]
     return term
-
+# @jit(nopython=True)
 def update_K_Matrix(k_matrix, term_f, term_b, step):
     check=[]
     for i in step:
@@ -180,7 +193,7 @@ def update_K_Matrix(k_matrix, term_f, term_b, step):
             k_matrix[i]+=-term_f
             k_matrix[i]+=term_b
     return k_matrix
-        
+# @jit(nopython=True)       
 def calc_kinetics(reac_type,c,index,kinetic_const):
     # A function that given the reaction type 0-ads, 1- bulk 
     # the relevant concentrations, indexes connecting the c and constants, 
@@ -202,7 +215,7 @@ def calc_kinetics(reac_type,c,index,kinetic_const):
         k_matrix=update_K_Matrix(k_matrix, -forward_step, -backward_step, step[1])
                 
     return k_matrix
-
+# @jit(nopython=True)
 def calc_EC_kinetics(reac_type, c, index, kinetic_const, E):
     # A function that given the reaction type 0-ads, 1- bulk 
     # the relevant concentrations, indexes connecting the c and constants, 
@@ -224,7 +237,7 @@ def calc_EC_kinetics(reac_type, c, index, kinetic_const, E):
         k_matrix=update_K_Matrix(k_matrix, -forward_step, -backward_step, step[1])
                 
     return k_matrix
-
+# @jit(nopython=True)
 def calc_current(reac_type, c, index, kinetic_const, E):
     # A function that given the reaction type 0-ads, 1- bulk 
     # the relevant concentrations, indexes connecting the c and constants, 
@@ -317,7 +330,7 @@ def Space_ranges(tmax,f,D,fraction,nx):
     N=np.arange(nx+2)
     x=dx*(gama**N-1)/(gama-1)
     return x
-
+# @jit(nopython=True)
 def calc_main_coef(x,dt,D,nx,B):
     # calculate alfas and a's used in simulation
     # calculated with given spatial direction x
@@ -348,7 +361,7 @@ def calc_main_coef(x,dt,D,nx,B):
         a4.append((-alfa4d*D-alfa4v)*dt)
     
     return np.array([np.array(a1),np.array(a2),np.array(a3),np.array(a4)])
-
+# @jit(nopython=True)
 def calc_boundary_condition(x,i,D,nx,B):
     # A function for evaluation of the flux boundary condition, at either boundary
     # i should be 0 or -1, 0 for the electrode, -1 for the bulk limit
@@ -435,6 +448,12 @@ def time_step(c, a, cp, nx, dt, n1, n, bound1, bound2, pnom, constants, index, F
     f=np.append(f,np.array([f9,f10]))
     return f
 
+def create_const_list(indexs, const):
+    c=[]
+    for i in indexs:
+       c.append(const[i])
+    return c
+
 def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_information, Potential_program):
     # The main simulation function
     # Given the mechanism string given as 
@@ -453,11 +472,21 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
     F=96485
     R=8.314
 
-    spec, index, types=Parse_mechanism(Mechanism)
+    spec, index, types, r_ind=Parse_mechanism(Mechanism)
     n=len(spec[1])
     n1=len(spec[0])
     
-    ads_const, bulk_const, EC_const, cell_const, Diffusion_const = Constants
+    kin_const, cell_const, Diffusion_const = Constants
+    
+    print(r_ind)
+    print(index)
+    ads_const=create_const_list(r_ind[0], kin_const)
+    bulk_const=create_const_list(r_ind[1], kin_const)
+    EC_const=create_const_list(r_ind[2], kin_const)
+    
+    print(ads_const)
+    print(bulk_const)
+    print(EC_const)
     
     T,Ru,Cdl,A=cell_const
     f=F/R/T

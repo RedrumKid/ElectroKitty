@@ -7,7 +7,8 @@ Created on Fri Feb 16 16:17:42 2024
 
 import numpy as np
 import matplotlib.pyplot as plt
-from ElectroKitty_main import simulator_Main_loop, V_potencial, uniform, FFT_analysis, Harmonic_plots
+from ElectroKitty_main import simulator_Main_loop, V_potencial, uniform, FFT_analysis, Harmonic_plots, Parse_mechanism
+import time
 
 # Constants used in simulation
 # All constants are given in base SI units (V, A, m, s, mol)
@@ -17,35 +18,28 @@ R=8.314 #J/mol/K
 T=293 #K
 
 # Number of points in the spatial direction
-nx=40
+nx=20
 
 # Mechanism string written in full
-mechanism="E:a=b \n C: b=c \n C:b+*-b* \n E:b*=d*"
+mechanism="E:a=b \n C: b=c \n C: b+*-b* \n E:b*=d*"
 # Number of dissolved species, must be updated so to not brick the simulation
 num_bulk_spec=3
 
 # Constants given for adsorption and reaction on the surface
 # One constant for ireversible, two for reversible
-Ads_c=[
-        [10]
-        ]
-# Constants for the bulk reaction
-B_c=[
-        [10,1]
-      ]
-# Electrochemical constants: alpha, k0, E0'
-# Electrochemical constant always take 3, regerdles of reversibility
-ec_c=[
-      [0.5,10**2,0], # none, m/s, V 
-      [0.5,100,-0.15]
-      ]
+kin_const=[
+    [0.5,10**2,0],
+    [10,1],
+    [10],
+    [0.5,100,-0.15]
+    ]
 
 # The diffusion constants for the dissolved species
 # This can be any list containing the constants, must be of lenghth n_spec
 D=10**-9*np.ones(num_bulk_spec)
 
 viscosity=10**-5 #m^2/s
-rot_freq=15 #Hz
+rot_freq=0 #Hz
 
 # Constants describing the cell: Temperature, Ru, Cdl, A
 cell_c=[T, 30, 1*10**-4, 10**-4] # K, Ohm , F/m^2, m^2
@@ -75,20 +69,22 @@ nt=1000 #number of time points
 # Generate the potential program
 E,t=V_potencial(Ei,Ef,v,amp,freq,nt,F/R/T) # V, s
 
+# time1=time.time()
 # Run the simulation
-E,i,t=simulator_Main_loop(mechanism, [Ads_c, B_c, ec_c, cell_c, D], si, t, spec_info, E) #V, A, s
-
+E,i,t=simulator_Main_loop(mechanism, [kin_const, cell_c, D], si, t, spec_info, E) #V, A, s
+# spec, index, types=Parse_mechanism(mechanism)
+# print(time.time()-time1)
 # A simple plot of the calculated current
 plt.figure("Example plot", figsize=(9,5))
 plt.title("Example CV")
 plt.plot(E,i)
 plt.ylabel("i [A]")
 plt.xlabel("E [V]")
-plt.hlines(-0.62*F*cell_c[-1]*(D[0])**(2/3)*np.sqrt(2*np.pi*rot_freq)*(viscosity)**(-1/6),Ef,Ei)
+# plt.hlines(-0.62*F*cell_c[-1]*(D[0])**(2/3)*np.sqrt(2*np.pi*rot_freq)*(viscosity)**(-1/6),Ef,Ei)
 plt.show()
 
-print("Show accuracy of simulation [%]: ")
-print((-0.62*F*cell_c[-1]*(D[0])**(2/3)*np.sqrt(2*np.pi*rot_freq)*(viscosity)**(-1/6)-min(i))/(-0.62*F*cell_c[-1]*(D[0])**(2/3)*np.sqrt(2*np.pi*rot_freq)*(viscosity)**(-1/6)))
+# print("Show accuracy of simulation [%]: ")
+# print((-0.62*F*cell_c[-1]*(D[0])**(2/3)*np.sqrt(2*np.pi*rot_freq)*(viscosity)**(-1/6)-min(i))/(-0.62*F*cell_c[-1]*(D[0])**(2/3)*np.sqrt(2*np.pi*rot_freq)*(viscosity)**(-1/6)))
 
 # Functions for compting harmonics for ACV, advanced features, requieres more time points
 # Uncomment for use
