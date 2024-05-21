@@ -63,7 +63,7 @@ def index_list(line, species_list):
     return f_index
 
 def update_index_lists(ads_index, bulk_index , ec_index, f,b, line,
-                       reaction_types_ads, reaction_types_ec, reaction_types_bulk, Type, len_ads, reaction_index, indicator):
+                       reaction_types_ads, reaction_types_ec, reaction_types_bulk, Type, len_ads, reaction_index, indicator, num_el):
     
     # A function, which takes the index lists and updates them accordingly,
     # separating the reactions into either into adsorbtion, bulk or electrochemical
@@ -72,7 +72,9 @@ def update_index_lists(ads_index, bulk_index , ec_index, f,b, line,
         ads_index.append([f,b])
         reaction_types_ads.append(Type)
         reaction_index[0].append(indicator)
-    elif line[:2]=="E:":
+    elif line[0]=="E":
+        elelectron_number=int(line[2])
+        num_el.append(elelectron_number)
         ec_index.append([f,b])
         reaction_types_ec.append(Type)
         reaction_index[2].append(indicator)
@@ -84,7 +86,7 @@ def update_index_lists(ads_index, bulk_index , ec_index, f,b, line,
         bulk_index.append([f,b])
         reaction_types_bulk.append(Type)
         reaction_index[1].append(indicator)
-    return ads_index, bulk_index, ec_index, reaction_types_ads, reaction_types_ec, reaction_types_bulk, reaction_index
+    return ads_index, bulk_index, ec_index, reaction_types_ads, reaction_types_ec, reaction_types_bulk, reaction_index, num_el
 
 def Parse_mechanism(string):
     
@@ -112,11 +114,15 @@ def Parse_mechanism(string):
     reaction_types_ec=[]
     reaction_types_bulk=[]
     
+    num_el=[]
+    
     for line in a:
+        
+        ind=find_string_index(":", line)
         if "=" in line:
-            bulk_spec, ads_spec = update_species_lists(line[2:], bulk_spec, ads_spec, "=")
+            bulk_spec, ads_spec = update_species_lists(line[ind+1:], bulk_spec, ads_spec, "=")
         elif "-" in line:
-            bulk_spec, ads_spec = update_species_lists(line[2:], bulk_spec, ads_spec, "-")
+            bulk_spec, ads_spec = update_species_lists(line[ind+1:], bulk_spec, ads_spec, "-")
         else:
             print("Mechanism Error: Wrong mechanism separator")
 
@@ -125,27 +131,28 @@ def Parse_mechanism(string):
     reaction_index=[[],[],[]]
     for i in range(len(a)):
         line=a[i]
+        ind=find_string_index(":", line)
         if "=" in line:
-            f,b=line[2:].split("=")
+            f,b=line[ind+1:].split("=")
             f_ind=index_list(f, species_list)
             b_ind=index_list(b, species_list)
-            ads_index, bulk_index, ec_index, reaction_types_ads,reaction_types_ec,reaction_types_bulk,reaction_index = update_index_lists(
+            ads_index, bulk_index, ec_index, reaction_types_ads,reaction_types_ec,reaction_types_bulk,reaction_index,num_el = update_index_lists(
                 ads_index, bulk_index, ec_index, f_ind, b_ind, line,
                 reaction_types_ads,
-                reaction_types_ec,reaction_types_bulk,True, len(species_list[0]), reaction_index, i)
+                reaction_types_ec,reaction_types_bulk,True, len(species_list[0]), reaction_index, i, num_el)
             
         elif "-" in line:
-            f,b=line[2:].split("-")
+            f,b=line[ind+1:].split("-")
             f_ind=index_list(f, species_list)
             b_ind=index_list(b, species_list)
-            ads_index, bulk_index, ec_index, reaction_types_ads,reaction_types_ec,reaction_types_bulk,reaction_index = update_index_lists(
+            ads_index, bulk_index, ec_index, reaction_types_ads,reaction_types_ec,reaction_types_bulk,reaction_index,num_el = update_index_lists(
                 ads_index, bulk_index, ec_index, f_ind, b_ind, line,
                 reaction_types_ads,
-                reaction_types_ec,reaction_types_bulk,False, len(species_list[0]), reaction_index, i)
+                reaction_types_ec,reaction_types_bulk,False, len(species_list[0]), reaction_index, i, num_el)
         else:
             print("Mechanism error: cannot index mechanism")
    
-    return species_list, [ads_index, bulk_index, ec_index], [reaction_types_ads, reaction_types_bulk, reaction_types_ec], reaction_index
+    return species_list, [ads_index, bulk_index, ec_index], [reaction_types_ads, reaction_types_bulk, reaction_types_ec], reaction_index, num_el
 
 ####################### Functions for generating potential programs
 
@@ -385,16 +392,16 @@ def calc_boundary_condition(x,i,D,nx,B):
     
     return np.array([np.array(a1),np.array(a2),np.array(a3)])
 
-def Butler_volmer_kinetics(alpha, k0, E0, f):
+def Butler_volmer_kinetics(alpha, k0, E0, f, el_num):
     # A function for evaluating the butler-volmer kinetics 
     # it transforms the given constants into function to be evaluated during simulation
-    return [lambda E: k0*np.exp(-alpha*f*(E-E0)), lambda E:k0*np.exp((1-alpha)*f*(E-E0))]
+    return [lambda E: el_num*k0*np.exp(-alpha*el_num*f*(E-E0)), lambda E:el_num*k0*np.exp((1-alpha)*el_num*f*(E-E0))]
 
-def get_EC_kinetic_constants(k_vector, kinetic_types, f):
+def get_EC_kinetic_constants(k_vector, kinetic_types, f, num_el):
     # A function for getting BV kinetics at the boundary condition
     # in case of irreversible kinetics the function is a zero function
     for i in range(len(k_vector)):
-        k_vector[i]=Butler_volmer_kinetics(k_vector[i][0], k_vector[i][1], k_vector[i][2], f)
+        k_vector[i]=Butler_volmer_kinetics(k_vector[i][0], k_vector[i][1], k_vector[i][2], f, num_el[i])
         if kinetic_types[i]==False:
             k_vector[i][1]=lambda E: 0
     return k_vector
@@ -470,7 +477,7 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
     F=96485
     R=8.314
 
-    spec, index, types, r_ind=Parse_mechanism(Mechanism)
+    spec, index, types, r_ind, num_el=Parse_mechanism(Mechanism)
     n=len(spec[1])
     n1=len(spec[0])
     
@@ -485,8 +492,7 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
     
     ads_const=get_kinetic_constants(ads_const, types[0])
     bulk_const=get_kinetic_constants(bulk_const, types[1])
-    EC_const=get_EC_kinetic_constants(EC_const, types[2], f)
-    
+    EC_const=get_EC_kinetic_constants(EC_const, types[2], f, num_el)
     
     dt=np.average(np.diff(Time))
     
@@ -526,7 +532,7 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
         res=sciop.root(time_step, cp, args=(
             a,cp,len(x)-2, dt , n1, n, 
             bound1, bound2, Potential_program[tt], 
-            constants, index, F, delta_E[tt-1]),tol=10**-20)
+            constants, index, F, delta_E[tt-1]),tol=10**-28)
 
         c=res.x
         current.append(F*A*calc_current(2, c[:n1+n], index, EC_const, c[-2]))
