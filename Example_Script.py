@@ -21,28 +21,29 @@ T=293 #K
 nx=20
 
 # Mechanism string written in full
-mechanism="E(5): a*=b*"
+mechanism="E(2):a=b \n C: b=c \n C: b+*-b* \n E(1):b*=d*"
 # Number of dissolved species, must be updated so to not brick the simulation
-num_bulk_spec=0
+num_bulk_spec=3
 
 # Constants given for adsorption and reaction on the surface
 # One constant for ireversible, two for reversible
 # units are as the apply, some examples are given
 kin_const=[
-    [0.5,10**2,0.],
-    # /, m/s, V
+    [0.5,10**2,0], # /, m/s, V
+    [10,1], # /s
+    [10],
+    [0.5,100,-0.15]
     ]
 
 # The diffusion constants for the dissolved species
 # This can be any list containing the constants, must be of lenghth n_spec
 D=10**-9*np.ones(num_bulk_spec)
-# D=np.array([10**-9,0.5*10**-9,2*10**-9])
 
 viscosity=10**-5 #m^2/s
 rot_freq=0 #Hz
 
 # Constants describing the cell: Temperature, Ru, Cdl, A
-cell_c=[T, 20, 1*10**-4, 10**-5] # K, Ohm , F/m^2, m^2
+cell_c=[T, 30, 1*10**-4, 10**-4] # K, Ohm , F/m^2, m^2
 
 # Constants describing the x direction: dx/xmax, nx
 si=[0.1/36, nx, viscosity, rot_freq]
@@ -51,8 +52,8 @@ si=[0.1/36, nx, viscosity, rot_freq]
 # Initial condition: first list initital surface occupations, second a list of initial condition functions, reccomend use of the uniform function 
 # uniform function takes in the value of the initial concentration and give the correct way for the simulator to understand the given list
 spec_info=[
-    [10**-5,0], #[mol/m^2]
-    [] #[mol/m^3]
+    [10**-5,0,0], #[mol/m^2]
+    [uniform(1),uniform(0),uniform(0)] #[mol/m^3]
     ]
 
 # Constants used in describing the potential program
