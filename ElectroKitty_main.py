@@ -496,7 +496,10 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
     
     isotherm_constants=isotherm_constants+n*[0]
     null=np.zeros(len(isotherm_constants))
-    isotherm_constants=np.array(isotherm_constants)/max(Species_information[0])
+    if n1>0:
+        isotherm_constants=np.array(isotherm_constants)/max(Species_information[0])
+    else:
+        isotherm_constants=np.array(isotherm_constants)
 
     ads_const=create_const_list(r_ind[0], kin_const)
     bulk_const=create_const_list(r_ind[1], kin_const)
