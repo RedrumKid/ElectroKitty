@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import sys
 import scipy.optimize as sciop
 import scipy.signal as scisi
-from numba import njit, prange
 
 ################# Functions for parsing mechanism
 
