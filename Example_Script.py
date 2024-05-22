@@ -43,7 +43,7 @@ viscosity=10**-5 #m^2/s
 rot_freq=0 #Hz
 
 # Constants describing the cell: Temperature, Ru, Cdl, A
-cell_c=[T, 30, 1*10**-4, 10**-4] # K, Ohm , F/m^2, m^2
+cell_c=[T, 10, 1*10**-4, 10**-4] # K, Ohm , F/m^2, m^2
 
 # Constants describing the x direction: dx/xmax, nx
 si=[0.1/36, nx, viscosity, rot_freq]
@@ -55,6 +55,8 @@ spec_info=[
     [10**-5,0,0], #[mol/m^2]
     [uniform(1),uniform(0),uniform(0)] #[mol/m^3]
     ]
+
+isotherm=[-0.1,-0.1,-0.1]
 
 # Constants used in describing the potential program
 # In this case I use the CV programm, other are to follow, a custom one can be made
@@ -72,7 +74,8 @@ E,t=V_potencial(Ei,Ef,v,amp,freq,nt,F/R/T) # V, s
 
 # time1=time.time()
 # Run the simulation
-E,i,t=simulator_Main_loop(mechanism, [kin_const, cell_c, D], si, t, spec_info, E) #V, A, sA
+E,i,t=simulator_Main_loop(mechanism, [kin_const, cell_c, D, isotherm], si, t, spec_info, E) #V, A, sA
+
 # spec, index, types=Parse_mechanism(mechanism)
 # print(time.time()-time1)
 # A simple plot of the calculated current

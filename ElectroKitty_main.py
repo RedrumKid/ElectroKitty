@@ -184,10 +184,18 @@ def get_kinetic_constants(k_vector, kinetic_types):
             sys.exit()
     
     return k_vector
+
+# def add_isotherm_terms(step, c, term, isotherm):
+#     for i in step:
+#         term*=np.exp(isotherm[i]*c[i])
+#     return term
 # @jit(nopython=True)
-def iterate_Over_conc(step, c, term):
+def iterate_Over_conc(step, c, term, isotherm):
+    
     for i in step:
-        term*=c[i]
+        # print(np.exp(isotherm[i]*c[i]))
+        # print(c[i]/10**-5)
+        term*=c[i]*np.exp(-isotherm[i]*c[i])
     return term
 # @jit(nopython=True)
 def update_K_Matrix(k_matrix, term_f, term_b, step):
@@ -199,7 +207,7 @@ def update_K_Matrix(k_matrix, term_f, term_b, step):
             k_matrix[i]+=term_b
     return k_matrix
 # @jit(nopython=True)       
-def calc_kinetics(reac_type,c,index,kinetic_const):
+def calc_kinetics(reac_type,c,index,kinetic_const, isotherm):
     # A function that given the reaction type 0-ads, 1- bulk 
     # the relevant concentrations, indexes connecting the c and constants, 
     # evaluates the reaction forward and backward kinetic rate
@@ -213,15 +221,15 @@ def calc_kinetics(reac_type,c,index,kinetic_const):
         forward_step=constants[0]
         backward_step=constants[1]
         
-        forward_step=iterate_Over_conc(step[0], c, forward_step)
-        backward_step=iterate_Over_conc(step[1], c, backward_step)
+        forward_step=iterate_Over_conc(step[0], c, forward_step, isotherm)
+        backward_step=iterate_Over_conc(step[1], c, backward_step, isotherm)
         
         k_matrix=update_K_Matrix(k_matrix, forward_step, backward_step, step[0])
         k_matrix=update_K_Matrix(k_matrix, -forward_step, -backward_step, step[1])
                 
     return k_matrix
 # @jit(nopython=True)
-def calc_EC_kinetics(reac_type, c, index, kinetic_const, E):
+def calc_EC_kinetics(reac_type, c, index, kinetic_const, E, isotherm):
     # A function that given the reaction type 0-ads, 1- bulk 
     # the relevant concentrations, indexes connecting the c and constants, 
     # evaluates the reaction forward and backward electrochemical kinetic rate at the boundary
@@ -235,15 +243,17 @@ def calc_EC_kinetics(reac_type, c, index, kinetic_const, E):
         forward_step=constants[0](E)
         backward_step=constants[1](E)
         
-        forward_step=iterate_Over_conc(step[0], c, forward_step)
-        backward_step=iterate_Over_conc(step[1], c, backward_step)
+        forward_step=iterate_Over_conc(step[0], c, forward_step, isotherm)
+        backward_step=iterate_Over_conc(step[1], c, backward_step, isotherm)
+        
+        # print(forward_step)
         
         k_matrix=update_K_Matrix(k_matrix, forward_step, backward_step, step[0])
         k_matrix=update_K_Matrix(k_matrix, -forward_step, -backward_step, step[1])
                 
     return k_matrix
 # @jit(nopython=True)
-def calc_current(reac_type, c, index, kinetic_const, E):
+def calc_current(reac_type, c, index, kinetic_const, E, isotherm):
     # A function that given the reaction type 0-ads, 1- bulk 
     # the relevant concentrations, indexes connecting the c and constants, 
     # evaluates the reaction forward and backward electrochemical current
@@ -255,8 +265,8 @@ def calc_current(reac_type, c, index, kinetic_const, E):
         constants=kinetic_const[i]
         forward_step=constants[0](E)
         backward_step=constants[1](E)
-        forward_step=iterate_Over_conc(step[0], c, forward_step)
-        backward_step=iterate_Over_conc(step[1], c, backward_step)
+        forward_step=iterate_Over_conc(step[0], c, forward_step, isotherm)
+        backward_step=iterate_Over_conc(step[1], c, backward_step, isotherm)
         current+=-forward_step+backward_step
     return current
 
@@ -406,7 +416,7 @@ def get_EC_kinetic_constants(k_vector, kinetic_types, f, num_el):
             k_vector[i][1]=lambda E: 0
     return k_vector
 
-def time_step(c, a, cp, nx, dt, n1, n, bound1, bound2, pnom, constants, index, F, delta):
+def time_step(c, a, cp, nx, dt, n1, n, bound1, bound2, pnom, constants, index, F, delta, isotherm_constants, null):
     # A function for evaluating the time step
     # given the guess, the weights, previous iteration, number of x points,
     # dt, number of ads spec, number of bulk spec, boundary at the electrode
@@ -431,7 +441,8 @@ def time_step(c, a, cp, nx, dt, n1, n, bound1, bound2, pnom, constants, index, F
 
     f=np.zeros(n1+(n)*(nx+2))
 
-    bound_kinetics=calc_kinetics(0, np.append(theta, c[0,:]), index, constants[0])+calc_EC_kinetics(2,np.append(theta, c[0,:]), index, constants[2], p)
+    bound_kinetics=(calc_kinetics(0, np.append(theta, c[0,:]), index, constants[0], isotherm_constants)
+                    + calc_EC_kinetics(2,np.append(theta, c[0,:]), index, constants[2], p, isotherm_constants))
 
     f[:n1]=theta-thetap-dt*bound_kinetics[:n1]
     
@@ -440,13 +451,13 @@ def time_step(c, a, cp, nx, dt, n1, n, bound1, bound2, pnom, constants, index, F
     if n!=0:
         for xx in range(1,nx):
             f[n1+n*xx:n1+n*xx+n]=(np.sum(a[:,xx-1,:]*c[xx-1:xx+3,:],axis=0)
-                                  -dt*calc_kinetics(1, c[xx,:], index, constants[1])-cp[xx,:])
+                                  -dt*calc_kinetics(1, c[xx,:], index, constants[1], null)-cp[xx,:])
         f[-2*n:-n]=(c[-2,:])-bound2
         f[-n:]=(c[-2,:]-c[-1,:])
     else:
         pass
         
-    ga=F*A*calc_current(2, np.append(theta, c[0,:]), index, constants[2], p)
+    ga=F*A*calc_current(2, np.append(theta, c[0,:]), index, constants[2], p, isotherm_constants)
     
     f9=(1+Ru*Cdl/dt)*gc-Cdl*delta-Ru*Cdl*(gcp)/dt
     f10=pnom-p-Ru*ga-Ru*gc
@@ -481,7 +492,11 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
     n=len(spec[1])
     n1=len(spec[0])
     
-    kin_const, cell_const, Diffusion_const = Constants
+    kin_const, cell_const, Diffusion_const, isotherm_constants = Constants
+    
+    isotherm_constants=isotherm_constants+n*[0]
+    null=np.zeros(len(isotherm_constants))
+    isotherm_constants=np.array(isotherm_constants)/max(Species_information[0])
 
     ads_const=create_const_list(r_ind[0], kin_const)
     bulk_const=create_const_list(r_ind[1], kin_const)
@@ -532,12 +547,13 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
         res=sciop.root(time_step, cp, args=(
             a,cp,len(x)-2, dt , n1, n, 
             bound1, bound2, Potential_program[tt], 
-            constants, index, F, delta_E[tt-1]),tol=10**-28)
+            constants, index, F, delta_E[tt-1], isotherm_constants, null),tol=10**-28)
 
         c=res.x
-        current.append(F*A*calc_current(2, c[:n1+n], index, EC_const, c[-2]))
+        current.append(F*A*calc_current(2, c[:n1+n], index, EC_const, c[-2], isotherm_constants))
         cap_cur.append(c[-1])
         ps.append(c[-2])
+        # print(c[:2]/10**-5)
     
     return np.array(ps), np.array(current)+np.array(cap_cur), Time
 
