@@ -60,7 +60,7 @@ nt=500 #number of time points
 # Generate the potential program
 E,t=V_potencial(Ei,Ef,v,amp,freq,nt,F/R/T) # V, s
 
-E,i,t=simulator_Main_loop(mechanism, [kin_const, cell_c, D, isotherm], si, t, spec_info, E) #V, A, sA
+E_corr,i,t=simulator_Main_loop(mechanism, [kin_const, cell_c, D, isotherm], si, t, spec_info, E) #V, A, sA
 
 # A simple plot of the calculated current
 plt.figure("Example plot", figsize=(9,5))
