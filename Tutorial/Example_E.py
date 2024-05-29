@@ -87,7 +87,7 @@ nt=500 #number of time points
 # The fianl two arguments are the number of points and the electrochemical constant f [1/V]
 E,t=V_potencial(Ei,Ef,v,amp,freq,nt,F/R/T) # V, s
 # Run the simulation
-E,i,t=simulator_Main_loop(mechanism, [kin_const, cell_c, D, isotherm], si, t, spec_info, E) #V, A, s
+E_corr,i,t=simulator_Main_loop(mechanism, [kin_const, cell_c, D, isotherm], si, t, spec_info, E) #V, A, s
 
 # A simple plot of the calculated current
 plt.figure("Example plot", figsize=(9,5))
