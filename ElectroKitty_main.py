@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 import sys
 import scipy.optimize as sciop
 import scipy.signal as scisi
-from numba import njit, prange
 
 ################# Functions for parsing mechanism
 
@@ -493,10 +492,14 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
     n1=len(spec[0])
     
     kin_const, cell_const, Diffusion_const, isotherm_constants = Constants
+    Diffusion_const=np.array(Diffusion_const)
     
     isotherm_constants=isotherm_constants+n*[0]
     null=np.zeros(len(isotherm_constants))
-    isotherm_constants=np.array(isotherm_constants)/max(Species_information[0])
+    if n1>0:
+        isotherm_constants=np.array(isotherm_constants)/max(Species_information[0])
+    else:
+        isotherm_constants=np.array(isotherm_constants)
 
     ads_const=create_const_list(r_ind[0], kin_const)
     bulk_const=create_const_list(r_ind[1], kin_const)
