@@ -415,7 +415,7 @@ def get_EC_kinetic_constants(k_vector, kinetic_types, f, num_el):
             k_vector[i][1]=lambda E: 0
     return k_vector
 
-def time_step(c, a, cp, nx, dt, n1, n, bound1, bound2, pnom, constants, index, F, delta, isotherm_constants, null):
+def time_step(c, a, cp, nx, dt, n1, n, bound1, bound2, pnom, constants, index, F, delta, isotherm_constants, null, spectator):
     # A function for evaluating the time step
     # given the guess, the weights, previous iteration, number of x points,
     # dt, number of ads spec, number of bulk spec, boundary at the electrode
@@ -443,9 +443,56 @@ def time_step(c, a, cp, nx, dt, n1, n, bound1, bound2, pnom, constants, index, F
     bound_kinetics=(calc_kinetics(0, np.append(theta, c[0,:]), index, constants[0], isotherm_constants)
                     + calc_EC_kinetics(2,np.append(theta, c[0,:]), index, constants[2], p, isotherm_constants))
 
-    f[:n1]=theta-thetap-dt*bound_kinetics[:n1]
+    f[:n1]=theta-thetap-dt*bound_kinetics[:n1]*spectator[:n1]
     
-    f[n1:n1+n]=np.sum(bound1[:,0,:]*c[0:3,:],axis=0)-bound_kinetics[n1:]
+    f[n1:n1+n]=np.sum(bound1[:,0,:]*c[0:3,:],axis=0)-bound_kinetics[n1:]*spectator[n1:n1+n]
+
+    if n!=0:
+        for xx in range(1,nx):
+            f[n1+n*xx:n1+n*xx+n]=(np.sum(a[:,xx-1,:]*c[xx-1:xx+3,:],axis=0)
+                                  -dt*calc_kinetics(1, c[xx,:], index, constants[1], null)-cp[xx,:])
+        f[-2*n:-n]=(c[-2,:])-bound2
+        f[-n:]=(c[-2,:]-c[-1,:])
+    else:
+        pass
+        
+    ga=F*A*calc_current(2, np.append(theta, c[0,:]), index, constants[2], p, isotherm_constants)
+    
+    f9=(1+Ru*Cdl/dt)*gc-Cdl*delta-Ru*Cdl*(gcp)/dt
+    f10=pnom-p-Ru*ga-Ru*gc
+    f=np.append(f,np.array([f9,f10]))
+    return f
+
+def eqilibration_step(c, a, cp, nx, dt, n1, n, bound1, bound2, pnom, constants, index, F, delta, isotherm_constants, null, spectator):
+    # A function for evaluating the time step
+    # given the guess, the weights, previous iteration, number of x points,
+    # dt, number of ads spec, number of bulk spec, boundary at the electrode
+    # boundary at the bulk limit, the program value of potential, a list of constants ordered:
+        # ads, bulk, ec, cell
+    # the index of how are kinetics manipulated, faraday constant, and the derivative of the potential
+    # evaluates the nonlinear set of equations to be solved at each time step
+    Ru,Cdl,A=constants[-1][1:]
+    p=c[-2]
+
+    gc=c[-1]
+    gcp=cp[-1]
+    
+    theta=c[:n1]
+    
+    c=c[n1:-2]
+    cp=cp[n1:-2]
+
+    c=c.reshape((nx+2,n))
+    cp=cp.reshape((nx+2,n))
+
+    f=np.zeros(n1+(n)*(nx+2))
+
+    bound_kinetics=(calc_kinetics(0, np.append(theta, c[0,:]), index, constants[0], isotherm_constants)
+                    + calc_EC_kinetics(2,np.append(theta, c[0,:]), index, constants[2], p, isotherm_constants))
+
+    f[:n1]=bound_kinetics[:n1]*spectator[:n1]
+    
+    f[n1:n1+n]=bound_kinetics[n1:]*spectator[n1:n1+n]
 
     if n!=0:
         for xx in range(1,nx):
@@ -469,7 +516,7 @@ def create_const_list(indexs, const):
        c.append(const[i])
     return c
 
-def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_information, Potential_program):
+def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_information, Potential_program, eqilibration=True):
     # The main simulation function
     # Given the mechanism string given as 
         # C: or E: sum: f1 = or - sum b1 \n ...
@@ -491,7 +538,14 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
     n=len(spec[1])
     n1=len(spec[0])
     
-    kin_const, cell_const, Diffusion_const, isotherm_constants = Constants
+    if len(Constants)==4:
+        kin_const, cell_const, Diffusion_const, isotherm_constants = Constants
+        spectator=np.ones(n+n1)
+    else:
+        kin_const, cell_const, Diffusion_const, isotherm_constants, spectator = Constants
+        
+        spectator=np.array(spectator[0]+spectator[1])
+    
     Diffusion_const=np.array(Diffusion_const)
     
     isotherm_constants=isotherm_constants+n*[0]
@@ -536,27 +590,45 @@ def simulator_Main_loop(Mechanism, Constants, Spatial_info, Time, Species_inform
     c=c.reshape((1,n*len(x)))[0,:]
     c=np.append(theta,c)
     
-    current=[0]
-    cap_cur=[0]
-    c=np.append(c,np.array([0.25,0]))
-    ps=[Potential_program[0]]
     delta_E=np.diff(Potential_program)/dt
+    c=np.append(c,np.array([0.25,0]))
     
     constants=[ads_const, bulk_const, EC_const, cell_const]
-
+    
+    if eqilibration==True:
+        # Preqilibration
+        cp=c
+        cp[-2]=Potential_program[0]
+        
+        res=sciop.root(eqilibration_step, cp, args=(
+            a,cp,len(x)-2, dt , n1, n, 
+            bound1, bound2, Potential_program[0], 
+            constants, index, F, delta_E[0], isotherm_constants, null, spectator),tol=10**-28)
+    
+        c=res.x
+        
+        current=[F*A*calc_current(2, c[:n1+n], index, EC_const, c[-2], isotherm_constants)]
+        cap_cur=[c[-1]]
+        ps=[c[-2]]
+    
+    else:
+        current=[0]
+        cap_cur=[0]
+        ps=[Potential_program[0]]
+    
     for tt in range(1,len(Time)):
         cp=c
         cp[-2]=Potential_program[tt]
         res=sciop.root(time_step, cp, args=(
             a,cp,len(x)-2, dt , n1, n, 
             bound1, bound2, Potential_program[tt], 
-            constants, index, F, delta_E[tt-1], isotherm_constants, null),tol=10**-28)
+            constants, index, F, delta_E[tt-1], isotherm_constants, null, spectator),tol=10**-28)
 
         c=res.x
         current.append(F*A*calc_current(2, c[:n1+n], index, EC_const, c[-2], isotherm_constants))
         cap_cur.append(c[-1])
         ps.append(c[-2])
-        # print(c[:2]/10**-5)
+        # print(c[:n1+n])
     
     return np.array(ps), np.array(current)+np.array(cap_cur), Time
 
