@@ -1,7 +1,7 @@
 from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup, find_packages
 
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 
 ext_modules = [
     Pybind11Extension(
@@ -21,9 +21,7 @@ setup(
     packages = find_packages(),
     ext_modules=ext_modules,
     install_requires=[
-        "setuptoold >= 68.2.2",
-        "pybind11 >= 2.13.5",
-        "numpy >= 1.26.4", 
+        "numpy >= 1.20.0", 
         "scipy >= 1.11.3",
         "matplotlib >= 3.8.0",
         "cma >= 3.3.0"
