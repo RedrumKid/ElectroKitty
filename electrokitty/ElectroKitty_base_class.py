@@ -591,7 +591,7 @@ class ElectroKitty:
             return np.where(abs(f-w0)<=w,1,0)
         
         if w==0:
-            for i in range(len(self.I_harmonics)):
+            for i in range(len(I_hars)):
                 plt.figure(str(i)+"_harmonic")
                 plt.title(str(i)+"th harmonic "+Title)
                 plt.plot(self.t, I_hars[i],label=label)
