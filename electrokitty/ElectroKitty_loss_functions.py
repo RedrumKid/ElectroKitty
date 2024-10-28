@@ -8,6 +8,7 @@ Created on Thu Aug 29 12:37:58 2024
 import numpy as np
 import sys
 import scipy.signal as scisi
+from cpp_ekitty_simulator import cpp_ekitty_simulator
 
 class electrokitty_loss():
     """
@@ -28,6 +29,13 @@ class electrokitty_loss():
         self.w=0.1*self.base_freq*np.ones(self.N_hars+1)
         self.I_har_exp=None
         self.t=None
+
+        self.Diffusion_const = None
+        self.spectators = None
+        self.Spatial_info = None
+        self.mechanism_list = None
+        self.t = None
+        self.E_generated = None
         
         self.guess, self.tells, self.gammaposition = self.create_parameter_guess(kin, species_information, 
                                                                                  cell_const, isotherm,
@@ -40,6 +48,14 @@ class electrokitty_loss():
         Gives the list of parameters that it is trying to optimise
         """
         return self.guess
+    
+    def set_constants(self, Diffusion_const, spectators, Spatial_info, mechanism_list, t, E):
+        self.Diffusion_const = Diffusion_const
+        self.spectators = spectators
+        self.Spatial_info = Spatial_info
+        self.mechanism_list = mechanism_list
+        self.t = t
+        self.E_generated = E
         
     def give_tells_gp(self):
         """
@@ -72,14 +88,34 @@ class electrokitty_loss():
         """
         Calculates and returns the RRMSE value given the guess for the simulator 
         """
-        i_sim=self.ysim(guess)
+
+        simulator = cpp_ekitty_simulator()
+        kin, cp, si, iso = self.unpack_fit_params(guess, self.tells, self.gammaposition)
+        simulator.set_parameters(
+                              cp, self.Diffusion_const, iso, self.spectators, self.Spatial_info, si, kin, 
+                              self.mechanism_list[0], self.mechanism_list[1], 
+                              self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
+                              )
+
+        simulator.set_simulation_programm(self.t, self.E_generated)
+        i_sim = simulator.simulate()
+
         return np.sum((i_sim-self.I_data)**2)/np.sum(self.I_data**2)/len(self.I_data)
     
     def RMSE_har(self, guess):
         """
         Calculates the harmonic average RRMSE given the guess
         """
-        i_sim=self.ysim(guess)
+        simulator = cpp_ekitty_simulator()
+        kin, cp, si, iso = self.unpack_fit_params(guess, self.tells, self.gammaposition)
+        simulator.set_parameters(
+                              cp, self.Diffusion_const, iso, self.spectators, self.Spatial_info, si, kin, 
+                              self.mechanism_list[0], self.mechanism_list[1], 
+                              self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
+                              )
+
+        simulator.set_simulation_programm(self.t, self.E_generated)
+        i_sim = simulator.simulate()
         s, f, i_har_sim=self.FFT_analysis(self.base_freq, self.N_hars, self.w, i_sim, self.t)
         
         L=0
@@ -327,17 +363,10 @@ class electrokitty_loss():
                 upper_bound.append(10**-4)
            
         if tells[tells[0]+5]!=0: #isotherm
-            check=guess[tells[tells[0]+5]:-1]
+            check=guess[tells[tells[0]+5]:]
             for param in check:
-                if param != 0 and param > 0:
-                    lower_bound.append(-10*param)
-                    upper_bound.append(10*param)
-                elif param != 0 and param < 0:
-                    lower_bound.append(10*param)
-                    upper_bound.append(-10*param)
-                else:
-                    lower_bound.append(-0.1)
-                    upper_bound.append(0.1)
+                lower_bound.append(-25)
+                upper_bound.append(10)
         
         lower_bound.append(0)
         upper_bound.append(1)

@@ -7,6 +7,7 @@ Created on Thu Aug 29 14:58:33 2024
 
 import numpy as np
 import multiprocessing
+from cpp_ekitty_simulator import cpp_ekitty_simulator
 
 class electrokitty_sampler():
     """
@@ -22,12 +23,38 @@ class electrokitty_sampler():
         self.bounds=bounds
         self.y_sim=None
         self.I_data=I_data
+        self.cell_const=None
+        self.Diffusion_const = None
+        self.isotherm = None
+        self.spectators = None
+        self.Spatial_info = None
+        self.Species_information = None
+        self.kin = None
+        self.mechanism_list = None
+        self.t = None
+        self.E_generated = None
+        self.tells = None
+        self.gp = None
     
     def give_y_sim(self, ysim):
         """
         update the function used to generate the simulation
         """
         self.y_sim=ysim
+    
+    def set_constants(self, cell_const, Diffusion_const, isotherm, spectators, Spatial_info, Species_information, kin, mechanism_list, t, E, tells, gp):
+        self.cell_const=cell_const
+        self.Diffusion_const = Diffusion_const
+        self.isotherm = isotherm
+        self.spectators = spectators
+        self.Spatial_info = Spatial_info
+        self.Species_information = Species_information
+        self.kin = kin
+        self.mechanism_list = mechanism_list
+        self.t = t
+        self.E_generated = E
+        self.tells = tells
+        self.gp = gp
     
     def prior(self, theta, lower_bound, upper_bound):
         """
@@ -48,8 +75,16 @@ class electrokitty_sampler():
         """
         Given the guess calculates the likelihood based on a guessian that the guess fits the data
         """
-        i_sim=self.y_sim(theta)
-        
+        simulator = cpp_ekitty_simulator()
+        kin, cp, si, iso = self.unpack_fit_params(theta[:-1], self.tells, self.gp)
+        simulator.set_parameters(
+                              cp, self.Diffusion_const, iso, self.spectators, self.Spatial_info, si, kin, 
+                              self.mechanism_list[0], self.mechanism_list[1], 
+                              self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
+                              )
+
+        simulator.set_simulation_programm(self.t, self.E_generated)
+        i_sim = simulator.simulate()
         N=len(self.I_data)
             
         p=-N/2*np.log(2*np.pi*theta[-1]**2)-np.sum((self.I_data-i_sim)**2)/2/theta[-1]**2
@@ -115,7 +150,7 @@ class electrokitty_sampler():
         cov0=1/np.sqrt(dim)*np.eye(dim)
         
         results.append(means)
-        
+
         M2=cov0
         means=means
         acc=0
@@ -185,5 +220,49 @@ class electrokitty_sampler():
         
         chains=np.array(chains)
         return chains
+    
+    def unpack_fit_params(self, guess, tells, gamma_position):
+        """
+        Function takes the guess, tells and gammma_position to reconstruct the lists for the simulator
+        """
+        guess=guess.tolist()
+        kinetics=[]
+        cell_params=[self.cell_const[0]]
+        spec_info=self.Species_information
+        
+        index1=0
+
+        for i in range(tells[0]):
+            
+            index2=tells[i+1]
+            kinetics.append(guess[index1:index2])
+            index1=index2
+
+        if tells[tells[0]+1] != 0:
+            cell_params.append(guess[tells[tells[0]+1]]) #Ru
+        else:
+            cell_params.append(self.cell_const[1])
+        
+        if tells[tells[0]+2] != 0:
+            cell_params.append(guess[tells[tells[0]+2]]) #Cdl
+        else:
+            cell_params.append(self.cell_const[2])
+        
+        if tells[tells[0]+3] != 0:
+            cell_params.append(guess[tells[tells[0]+3]]) #A
+        else:
+            cell_params.append(self.cell_const[3])
+        
+        if tells[tells[0]+4] != 0:
+            spec_info[0][gamma_position] = guess[tells[tells[0]+4]] #gammamax
+        else:
+           pass
+           
+        if tells[tells[0]+5]!=0:
+            isotherm=guess[tells[tells[0]+5]:] #isotherm
+        else:
+            isotherm=self.isotherm
+        
+        return kinetics, cell_params, spec_info, isotherm
     
     

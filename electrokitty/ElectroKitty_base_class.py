@@ -121,7 +121,6 @@ class ElectroKitty:
                               cell_const, Diffusion_const, isotherm, spectators, Spatial_info, Species_information, kin, 
                               self.mechanism_list[0], self.mechanism_list[1], 
                               self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
-                              
                               )
 
         self.simulator.set_simulation_programm(self.t, self.E_generated)
@@ -320,7 +319,7 @@ class ElectroKitty:
                                           ,self.isotherm, self.I_data,
                                           fit_Cdl=fit_Cdl, fit_Ru=fit_Ru, fit_gamamax=fit_gamamax,
                                           fit_A=fit_A, fit_iso=fit_iso)
-        
+        self.loss_function.set_constants(self.diffusion_const, self.spectators, self.spatial_info, self.mechanism_list, self.t, self.E_generated)
         self.tells, self.gammaposition = self.loss_function.give_tells_gp()
         self.simulator.create_optimization_problem(self.tells, self.gammaposition)
         self.loss_function.update_ysim(self.simulator.calc_from_guess)
@@ -478,8 +477,7 @@ class ElectroKitty:
                                          fit_A=fit_A, fit_iso=fit_iso)
         
         self.tells, self.gammaposition = self.loss_function.give_tells_gp()
-        self.simulator.create_optimization_problem(self.tells, self.gammaposition)
-        self.loss_function.update_ysim(self.simulator.calc_from_guess)
+        
         if bounds==None:
             lower_bound, upper_bound = self.loss_function.create_lower_upper_bounds(self.loss_function.guess, self.tells,
                                                                                  self.E_generated)
@@ -487,9 +485,10 @@ class ElectroKitty:
         self.MCMC_sampler=electrokitty_sampler(n_samples, burn_in_per, num_chains, 
                      multi_processing, bounds, self.I_data)
         
-        self.MCMC_sampler.give_y_sim(self.simulator.calc_from_guess)
-        
-        chains=self.MCMC_sampler.start_sampler(self.loss_function.guess)
+        self.MCMC_sampler.set_constants(self.cell_const, self.diffusion_const, self.isotherm, self.spectators, self.spatial_info, self.species_information,
+                                        self.kin, self.mechanism_list, self.t, self.E_generated, self.tells, self.gamaposition)
+
+        chains=self.MCMC_sampler.start_sampler(np.append(self.loss_function.guess, np.array([0.01*max(self.I_data)])))
         
         
         self.chains=chains
@@ -497,10 +496,11 @@ class ElectroKitty:
         
         self.update_after_min(np.average(self.mean_chain[:int(burn_in_per*n_samples),:-1],axis=0))
         
-        now=str(datetime.now)
-        now.replace(" ", "_")
-        now.replace(":", "-")
-        self.save(now)
+        current_time=str(datetime.now())
+        current_time=current_time.replace(" ", "_")
+        current_time=current_time.replace(":", "-")
+
+        self.save(current_time)
         
         print()
         print(f"Finished sampling after iterations: {n_samples}")

@@ -56,7 +56,6 @@ class electrokitty_optimization_controller:
                 print("CMA-ES failed")
         
         elif self.algorithm=="CMA-ES":
-            
             sol, message = self.optimizer.CMA_ES(self.fun, self.x0, 0.1, 
                                                  lb=self.lb, ub=self.ub, tolf=self.tolf, tolx=self.tolx)
             
