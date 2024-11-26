@@ -100,7 +100,7 @@ class electrokitty_loss():
         simulator.set_simulation_programm(self.t, self.E_generated)
         i_sim = simulator.simulate()
 
-        return np.sum((i_sim-self.I_data)**2)/np.sum(self.I_data**2)/len(self.I_data)
+        return np.sqrt(np.sum((i_sim-self.I_data)**2)/np.sum(self.I_data**2)/len(self.I_data))
     
     def RMSE_har(self, guess):
         """
@@ -120,7 +120,7 @@ class electrokitty_loss():
         
         L=0
         for i in range(len(i_har_sim)):
-            L+=1/(self.N_hars+1)*np.sum((i_har_sim[i]-self.I_har_exp[i])**2)/np.sum(self.I_har_exp[i]**2)/len(self.I_har_exp[i])
+            L+=1/(self.N_hars+1)*np.sqrt(np.sum((i_har_sim[i]-self.I_har_exp[i])**2)/np.sum(self.I_har_exp[i]**2)/len(self.I_har_exp[i]))
         return L
     
     def FFT_analysis(self, f,N,w, current, t):
@@ -372,3 +372,63 @@ class electrokitty_loss():
         upper_bound.append(1)
         
         return lower_bound, upper_bound 
+    
+    def create_axis_labels(self,tells, a_spec):
+        """
+        Function takes the tells and species names to return parameter labels for the chain
+        """
+        
+        labels = []
+
+        for i in range(tells[0]):
+            
+            labels.append(r"$\alpha"+"_{"+str(i+1)+"}$")
+            labels.append(r"$k_{0,"+str(i+1)+"}$")
+            labels.append(r"$E^{0'}_{"+str(i+1)+"}$")
+
+        if tells[tells[0]+1] != 0:
+            labels.append(r"$R_{u}$") #Ru
+        else:
+            pass
+        
+        if tells[tells[0]+2] != 0:
+            labels.append(r"$C_{dl}$") #Cdl
+        else:
+            pass
+        
+        if tells[tells[0]+3] != 0:
+            labels.append(r"$A$") #A
+        else:
+            pass
+        
+        if tells[tells[0]+4] != 0:
+            labels.append(r"$\Gamma_{max}$") #gammamax
+        else:
+           pass
+           
+        if tells[tells[0]+5]!=0:
+            for spec_name in a_spec: #isotherm
+                labels.append(r"$g_{"+spec_name+"}$")
+        else:
+            pass
+        labels.append(r"$\sigma$")
+        return labels
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        

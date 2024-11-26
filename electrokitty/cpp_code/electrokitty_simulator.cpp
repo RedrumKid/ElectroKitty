@@ -47,6 +47,8 @@ public:
         vector<vector<double>> species_information;
         vector<vector<double>> kin;
 
+        vector<vector<double>> cons;
+
         vector<double> x_dir;
         int number_of_diss_spec;
         int number_of_surf_conf;
@@ -111,7 +113,6 @@ public:
                 surface_profile.clear();
                 concentration_profile.clear();
 
-                vector<vector<double>> cons;
                 cons.push_back(cell_const);
                 cons.push_back(diffusion_const);
                 cons.push_back(isotherm);
@@ -120,6 +121,7 @@ public:
                 simulator_main_loop(
                         spec, index, types, r_ind, num_el, kin, cons,spatial_information, t, species_information,
                         E_generated, 0);
+                cons.clear();
                 return current;
         }
 
@@ -134,7 +136,7 @@ public:
                 surface_profile.clear();
                 concentration_profile.clear();
                 Fit_Params fparams = unpack_fit_params(guess, tells, gammaposition);
-                vector<vector<double>> cons;
+
                 cons.push_back(fparams.cell_params);
                 cons.push_back(diffusion_const);
                 cons.push_back(fparams.isotherm);
@@ -143,6 +145,7 @@ public:
                 simulator_main_loop(
                         spec, index, types, r_ind, num_el, fparams.kinetics, cons,spatial_information, t, fparams.spec_info,
                         E_generated, 0);
+                cons.clear();
                 return current;
         }
 

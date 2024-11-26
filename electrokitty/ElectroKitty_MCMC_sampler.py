@@ -34,7 +34,7 @@ class electrokitty_sampler():
         self.t = None
         self.E_generated = None
         self.tells = None
-        self.gp = None
+        self.gamppos = None
     
     def give_y_sim(self, ysim):
         """
@@ -54,7 +54,7 @@ class electrokitty_sampler():
         self.t = t
         self.E_generated = E
         self.tells = tells
-        self.gp = gp
+        self.gampos = gp
     
     def prior(self, theta, lower_bound, upper_bound):
         """
@@ -76,7 +76,7 @@ class electrokitty_sampler():
         Given the guess calculates the likelihood based on a guessian that the guess fits the data
         """
         simulator = cpp_ekitty_simulator()
-        kin, cp, si, iso = self.unpack_fit_params(theta[:-1], self.tells, self.gp)
+        kin, cp, si, iso = self.unpack_fit_params(theta[:-1], self.tells, self.gampos)
         simulator.set_parameters(
                               cp, self.Diffusion_const, iso, self.spectators, self.Spatial_info, si, kin, 
                               self.mechanism_list[0], self.mechanism_list[1], 

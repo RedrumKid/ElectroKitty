@@ -70,6 +70,7 @@ class ElectroKitty:
         self.multi_core_MCMC=False
         self.chains=None
         self.mean_chain=None
+        self.xlabels=None
         
         self.Parser=electrokitty_parser(string)
         self.simulator=cpp_ekitty_simulator()
@@ -327,6 +328,8 @@ class ElectroKitty:
         if algorithm != "Nelder-Mead":
             lower_bound, upper_bound = self.loss_function.create_lower_upper_bounds(self.loss_function.guess, self.tells,
                                                                                       self.E_generated)
+            lower_bound = lower_bound[:-1]
+            upper_bound = upper_bound[:-1]
         else:
             lower_bound=None
             upper_bound=None
@@ -335,7 +338,7 @@ class ElectroKitty:
                                                             self.loss_function.guess,
                                                             algorithm=algorithm, 
                                                             tolf=tolf, tolx=tolx,
-                                                            lb=lower_bound[:-1], ub=upper_bound[:-1])
+                                                            lb=lower_bound, ub=upper_bound)
         
         opt_params, self.fit_score=self.optimizer.fit_parameters()
         self.update_after_min(opt_params)
@@ -380,10 +383,11 @@ class ElectroKitty:
                                           fit_Cdl=fit_Cdl, fit_Ru=fit_Ru, fit_gamamax=fit_gamamax,
                                           fit_A=fit_A, fit_iso=fit_iso)
         
+        self.loss_function.set_constants(self.diffusion_const, self.spectators, self.spatial_info, self.mechanism_list, self.t, self.E_generated)
         self.tells, self.gammaposition = self.loss_function.give_tells_gp()
         self.simulator.create_optimization_problem(self.tells, self.gammaposition)
         self.loss_function.update_ysim(self.simulator.calc_from_guess)
-        
+
         self.loss_function.create_ACV_problem(base_freq, N_harmonics, self.I_har_data, self.t, w=w)
         
         if algorithm != "Nelder-Mead":
@@ -484,15 +488,16 @@ class ElectroKitty:
             bounds=[lower_bound, upper_bound]
         self.MCMC_sampler=electrokitty_sampler(n_samples, burn_in_per, num_chains, 
                      multi_processing, bounds, self.I_data)
-        
+
         self.MCMC_sampler.set_constants(self.cell_const, self.diffusion_const, self.isotherm, self.spectators, self.spatial_info, self.species_information,
-                                        self.kin, self.mechanism_list, self.t, self.E_generated, self.tells, self.gamaposition)
+                                        self.kin, self.mechanism_list, self.t, self.E_generated, self.tells, self.gammaposition)
 
         chains=self.MCMC_sampler.start_sampler(np.append(self.loss_function.guess, np.array([0.01*max(self.I_data)])))
         
-        
         self.chains=chains
         self.mean_chain=np.average(chains, axis=0)
+        
+        self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
         
         self.update_after_min(np.average(self.mean_chain[:int(burn_in_per*n_samples),:-1],axis=0))
         
@@ -746,4 +751,40 @@ class ElectroKitty:
             plt.xlabel(x_label)
             plt.ylabel("theta")
             plt.show()
-            
+    
+    def Plot_MCMC_mean_chain(self):
+        n_par = len(self.mean_chain[0, :])
+        fig, axes = plt.subplots(n_par)
+        for i in range(n_par):
+            axes[i].plot(self.mean_chain[:,i])
+            axes[i].set_ylabel(self.xlabels[i])
+        
+        axes[-1].set_xlabel("samples")
+        
+    def Plot_MCMC_parameter_dist(self):
+        n_par = len(self.mean_chain[0, :])
+        fig, axes = plt.subplots(n_par, n_par)
+
+        for i in range(n_par):
+            axes[i,0].set_ylabel(self.xlabels[i])
+            for j in range(n_par):
+                if i == n_par-1:
+                    axes[-1, j].set_xlabel(self.xlabels[j])
+                if j == i:
+                    axes[i, j].hist(self.mean_chain[:,i], bins = 20)
+                elif j > i:
+                    axes[i, j].remove()
+                else:
+                    axes[i, j].scatter(self.mean_chain[:,i], self.mean_chain[:,j])
+    
+    def Plot_MCMC_histogram(self):
+        n_par = len(self.mean_chain[0, :])
+        fig, axes = plt.subplots(n_par)
+        for i in range(n_par):
+            axes[i].hist(self.mean_chain[:,i], bins = 30)
+            axes[i].set_xlabel(self.xlabels[i])
+        
+            axes[i].set_ylabel("occurance")
+    
+    
+    
