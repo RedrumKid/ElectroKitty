@@ -379,12 +379,21 @@ class electrokitty_loss():
         """
         
         labels = []
-
+        index1 = 0
         for i in range(tells[0]):
-            
-            labels.append(r"$\alpha"+"_{"+str(i+1)+"}$")
-            labels.append(r"$k_{0,"+str(i+1)+"}$")
-            labels.append(r"$E^{0'}_{"+str(i+1)+"}$")
+                
+            index2=tells[i+1]
+            dist = abs(index2-index1)
+            if dist == 3:
+                labels.append(r"$\alpha"+"_{"+str(i+1)+"}$")
+                labels.append(r"$k_{0,"+str(i+1)+"}$")
+                labels.append(r"$E^{0'}_{"+str(i+1)+"}$")
+            elif dist == 2:
+                labels.append(r"$k_{f"+str(i+1)+"}$")
+                labels.append(r"$k_{b"+str(i+1)+"}$")
+            elif dist == 1:
+                labels.append(r"$k_{"+str(i+1)+"}$")
+            index1=index2
 
         if tells[tells[0]+1] != 0:
             labels.append(r"$R_{u}$") #Ru

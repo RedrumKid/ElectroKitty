@@ -785,6 +785,3 @@ class ElectroKitty:
             axes[i].set_xlabel(self.xlabels[i])
         
             axes[i].set_ylabel("occurance")
-    
-    
-    
