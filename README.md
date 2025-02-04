@@ -25,6 +25,8 @@ To get started with ElectroKitty checkout the tutorials found in the tutorial fo
 There you will find 6 tutorials of which 5 cover the more basic topics behind ElectroKitty, while 
 the 6th tutorial covers some more advanced ideas. 
 
+The documentation for ElectroKitty can be found at: https://electrokitty.readthedocs.io/en/latest/.
+
 ## Getting in touch and contributing
 
 This project welcomes any contribution, wheter it be code or a simple bug report.
