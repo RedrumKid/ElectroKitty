@@ -703,9 +703,9 @@ class ElectroKitty:
         plt.title("Simulated signal "+Title)
         if plot_with_correction:
             self.IR_correct_data(correct_simulation=True)
-            plt.plot(self.E_corrected, self.current, label=label)
+            plt.plot(self.E_corrected, self.I_data, label=label)
         else:
-            plt.plot(self.E_generated, self.current, label=label)
+            plt.plot(self.E_generated, self.I_data, label=label)
         plt.xlabel("E [V]")
         plt.ylabel("I [A]")
         plt.show()
