@@ -691,7 +691,7 @@ class ElectroKitty:
         plt.ylabel("I [A]")
         plt.show()
         
-    def Plot_data(self, Title="",label="", plot_with_correction = True):
+    def Plot_data(self, Title="",label="", plot_with_correction = False):
         """
         Function plots the data current vs. data potential 
 
