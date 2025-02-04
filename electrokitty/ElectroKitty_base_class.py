@@ -767,15 +767,14 @@ class ElectroKitty:
         
         try:
             self.concentration_profile=self._update_conc_profile()
-            Z=self.concentration_profile[species_num][:,:len(self.x[:-2])]
         except:
-            Z=self.concentration_profile[:,:len(self.x[:-2])]
+            pass
 
         self.x=calc_x(self.t[-1], max(self.diffusion_const), self.spatial_info[0], self.spatial_info[1])
         fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
 
         X, Y = np.meshgrid(self.x[:-2]*10**3, self.t)
-        
+        Z=self.concentration_profile[species_num][:,:len(self.x[:-2])]
         surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
                                linewidth=0, antialiased=False)
         
