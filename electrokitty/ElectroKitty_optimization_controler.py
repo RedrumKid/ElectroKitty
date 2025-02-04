@@ -30,7 +30,9 @@ class electrokitty_optimization_controller:
         self.optimizer=electrokitty_optimization_algorithms()
     
     def fit_parameters(self):
-        
+        """
+        The function the base class will call to excecute the chosen algorithm from the optimizer class
+        """
         if self.algorithm=="Nelder-Mead":
             sol, message= self.optimizer.nelder_mead(self.fun, self.x0, no_improve_thershold=self.tolf)
             self.best_guess=sol[0]

@@ -85,22 +85,22 @@ class ElectroKitty:
         Give the simulator all required parameters for simulation
         
         The parameters are: 
-            kin: kinetic constants to simulate from, also used as a first guess when fitting
+            - kin: kinetic constants to simulate from, also used as a first guess when fitting
                 EC: kinetics need a list of 2, C: needs either 2 or 1, depending on the mechanism
             
-            cell_const: list of 4 constants in order of T, Ru, Cdl, A
+            - cell_const: list of 4 constants in order of T, Ru, Cdl, A
             
-            Diffusion_const: a list containing all diffusion constants for all dissolved species
+            - Diffusion_const: a list containing all diffusion constants for all dissolved species
             
-            isotherm: a list of isotherm constants for all adsorbed species
+            - isotherm: a list of isotherm constants for all adsorbed species
             
-            Spatial_info: a list of constants for creating the diffusion layer in order:
+            - Spatial_info: a list of constants for creating the diffusion layer in order:
                 dx/xmax, nx (number of points), viscosity, rotational frequency in Hz
             
-            Species_information: initial condition of the simulation,
+            - Species_information: initial condition of the simulation,
                 a list of lists: surface concentrations, dissolved concentrations
             
-            spectators: not fully implemented, a list of 1 or 0 to use the species or not in the reaction
+            - spectators: not fully implemented, a list of 1 or 0 to use the species or not in the reaction
         
         """
         
@@ -194,7 +194,7 @@ class ElectroKitty:
                               self.mechanism_list[0], self.mechanism_list[1], 
                               self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
                               )
-
+        self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
         self.simulator.set_simulation_programm(self.t, self.E_generated)
     
     def set_data(self, E_data, i_data, t_data):
@@ -214,8 +214,8 @@ class ElectroKitty:
         Delimiter is a tab
 
         Parameters:
-            pats... the path to the file
-            skip... skips this many rows in the data
+            - path: the path to the file
+            - skip: skips this many rows in the data
         """
         data = np.loadtxt(path, skiprows=skip)
         self.I_data = data[:,1]
@@ -227,15 +227,20 @@ class ElectroKitty:
         Function for correcting the Ru in data or simulation
 
         Parameters:
-            Ru... the ammount of resistance to be corrected [Ohm]
-            must choose either correct_data or correct_simulation
+            - Ru: the ammount of resistance to be corrected [Ohm]
+            - Choose either: correct_data or correct_simulation
+        
+        Returns:
+          - the corrected potential
         """
         if Ru < 0:
             Ru = self.cell_const[1]
         if correct_simulation:
             self.E_corrected = self.E_generated - Ru*self.current
+            return self.E_corrected
         elif correct_data:
             self.E_corrected = self.E_generated - Ru*self.I_data
+            return self.E_corrected
         else:
             print("Nothing to correct: choose either data or simulation")
     
@@ -243,14 +248,16 @@ class ElectroKitty:
         """
         function to call the simulator.
         
-        Will update the current, E_Corr, surface_profile, concentration_profile
+        Will update the current, E_Corr, surface_profile, concentration_profile and
+        Returns:
+         - E, I, t in this order
         """
         
         self.current = self.simulator.simulate()
         self.E_Corr = self.simulator.give_E_corr()
         self.surface_profile = self.simulator.give_surf_profile()
         self.concentration_profile = self.simulator.give_concentration_profile()
-        # self.E_Corr, self.current, self.surface_profile, self.concentration_profile = self.simulator.simulate(eqilib=eqilib)
+        return self.E_generated, self.current, self.t
         
     ####################### Functions for generating potential programs
     
@@ -259,13 +266,16 @@ class ElectroKitty:
         Function to generate a potential signal for a CV/ACV simulation
         
         Parameters:
-            Ei... initial potential [V]
-            Ef... potential when the signal turns [V]
-            v... scan rate [V/s]
-            amplitude... sinusoidal amplitude [V]
-            frequency... sine frequency [Hz]
-            nt... number of time points
-        
+            - Ei: initial potential [V]
+            - Ef: potential when the signal turns [V]
+            - v: scan rate [V/s]
+            - amplitude: sinusoidal amplitude [V]
+            - frequency: sine frequency [Hz]
+            - nt: number of time points
+
+        Returns: 
+            - the potential and time arrays
+
         !!! The function will override the data potential signal
         """
         # calculate the potentail input signal for a CV or ACV
@@ -282,13 +292,44 @@ class ElectroKitty:
         Function to generate a constant potential for chronoamperometry
         
         Parameters:
-            E... holding potential [V]
-            tmax... maximum time [s]
-            nt... number of time points
+            - E: holding potential [V]
+            - tmax: maximum time [s]
+            - nt: number of time points
+
+        Returns: 
+            - the potential and time arrays
+
+        !!! The function will override the data potential signal
         """
         self.E_generated=E*np.ones(nt)
         self.t=np.linspace(0,tmax,nt)
         return self.E_generated, self.t
+    
+    def LSV_potential(self, Ei, Ef, v, amplitude, frequency, nt):
+        """
+        Function to generate a potential signal for a LSV/ACLSV simulation
+        
+        Parameters:
+            - Ei: initial potential [V]
+            - Ef: final potential [V]
+            - v: scan rate [V/s]
+            - amplitude: sinusoidal amplitude [V]
+            - frequency: sine frequency [Hz]
+            - nt: number of time points
+
+        Returns: 
+            - the potential and time arrays
+
+        !!! The function will override the data potential signal
+        """
+
+        ts=abs((-Ei+Ef)/v)
+        self.t=np.linspace(0,ts,nt)
+        if Ei > Ef:
+            self.E_generated=Ei - v*self.t +amplitude*np.sin(2*np.pi*frequency*self.t) 
+        elif Ei < Ef:
+            self.E_generated=Ei + v*self.t +amplitude*np.sin(2*np.pi*frequency*self.t)
+        return self.E_generated,self.t
     ##################### Fitting to data
     
     
@@ -300,17 +341,17 @@ class ElectroKitty:
         Function which tries to fit kinetic parameters and others to current from data
         
         Parameters:
-            fit_Cdl... True to fit the double layer capacitance
-            fit_Ru... True to fit uncompensated resistance
-            fit_gamamax... True to fit the highest surface concentration in the species_information list
-            fit_A... True to fit the electrode surface
-            fit_iso... True to fit the whole list of isotherm constants
-            eqilibration... currently does nothing
-            algorithm... Choose between "Nelder-Mead" and "CMA-ES"
+            - fit_Cdl: True to fit the double layer capacitance
+            - fit_Ru: True to fit uncompensated resistance
+            - fit_gamamax: True to fit the highest surface concentration in the species_information list
+            - fit_A: True to fit the electrode surface
+            - fit_iso: True to fit the whole list of isotherm constants
+            - eqilibration: currently does nothing
+            - algorithm: Choose between "Nelder-Mead" and "CMA-ES"
                 the class will automatically create a minimisation problem based on the chosen algorithm
             
-            tolf... the function value to cutoff, used only in Nelder-Mead
-            tolx... the difference in x for the algorithm to cutoff on, used by both algorithms
+            - tolf: the function value to cutoff, used only in Nelder-Mead
+            - tolx: the difference in x for the algorithm to cutoff on, used by both algorithms
         
         algortim = "CMA-ES raw" is available but should not be used as it performs worse 
         than the one used by the cma package
@@ -358,20 +399,20 @@ class ElectroKitty:
         Function which tries to fit kinetic parameters and others to current harmonics generated from data
         
         Parameters:
-            base_freq... frequency of the sine wave [Hz]
-            N_harmonics... number of harmonics to use when fitting
-            w... a list of vaules to use in the rectangular function to seperate the harmonics
-            fit_Cdl... True to fit the double layer capacitance
-            fit_Ru... True to fit uncompensated resistance
-            fit_gamamax... True to fit the highest surface concentration in the species_information list
-            fit_A... True to fit the electrode surface
-            fit_iso... True to fit the whole list of isotherm constants
-            eqilibration... currently does nothing
-            algorithm... Choose between "Nelder-Mead" and "CMA-ES"
+            - base_freq: frequency of the sine wave [Hz]
+            - N_harmonics: number of harmonics to use when fitting
+            - w: a list of vaules to use in the rectangular function to seperate the harmonics
+            - fit_Cdl: True to fit the double layer capacitance
+            - fit_Ru: True to fit uncompensated resistance
+            - fit_gamamax: True to fit the highest surface concentration in the species_information list
+            - fit_A: True to fit the electrode surface
+            - fit_iso: True to fit the whole list of isotherm constants
+            - eqilibration: currently does nothing
+            - algorithm: Choose between "Nelder-Mead" and "CMA-ES"
                 the class will automatically create a minimisation problem based on the chosen algorithm
             
-            tolf... the function value to cutoff, used only in Nelder-Mead
-            tolx... the difference in x for the algorithm to cutoff on, used by both algorithms
+            - tolf: the function value to cutoff, used only in Nelder-Mead
+            - tolx: the difference in x for the algorithm to cutoff on, used by both algorithms
         
         algortim = "CMA-ES raw" is available but should not be used as it performs worse 
         than the one used by the cma package
@@ -413,9 +454,9 @@ class ElectroKitty:
         current_time=current_time.replace(" ", "_")
         current_time=current_time.replace(":", "-")
 
-        self.save(current_time)
+        self.save("Fit_"+current_time)
         print()
-        print("Finished Optimization and updated problem")
+        print("Finished Optimization and updated class")
     
     def update_after_min(self, optimal):
         """
@@ -458,17 +499,17 @@ class ElectroKitty:
         Currently multiprocessing does not fully work and should be avoided
         
         Parameters:
-            n_samples... number of samples in a single chain
-            burn_in_per... fraction of samples to be discared when updating the class
-            num_chains... number of chains to be calculated
-            multiprocessing... True in order to perform MCMC on multiple cores
-            fit_Cdl... True to fit the double layer capacitance
-            fit_Ru... True to fit uncompensated resistance
-            fit_gamamax... True to fit the highest surface concentration in the species_information list
-            fit_A... True to fit the electrode surface
-            fit_iso... True to fit the whole list of isotherm constants
-            eqilibration... currently does nothing
-            bounds... a list containing a lists of the lower and upper bounds on the parameters,
+            - n_samples: number of samples in a single chain
+            - burn_in_per: fraction of samples to be discared when updating the class
+            - num_chains: number of chains to be calculated
+            - multiprocessing: True in order to perform MCMC on multiple cores
+            - fit_Cdl: True to fit the double layer capacitance
+            - fit_Ru: True to fit uncompensated resistance
+            - fit_gamamax: True to fit the highest surface concentration in the species_information list
+            - fit_A: True to fit the electrode surface
+            - fit_iso: True to fit the whole list of isotherm constants
+            - eqilibration: currently does nothing
+            - bounds: a list containing a lists of the lower and upper bounds on the parameters,
                 if None the class generates them itself, used as the prior distribution
             
         """
@@ -505,7 +546,7 @@ class ElectroKitty:
         current_time=current_time.replace(" ", "_")
         current_time=current_time.replace(":", "-")
 
-        self.save(current_time)
+        self.save("MCMC_"+current_time)
         
         print()
         print(f"Finished sampling after iterations: {n_samples}")
@@ -518,10 +559,10 @@ class ElectroKitty:
         Function which generates the FT of the data and separates the harmonics
         
         Parameters:
-            f... frequency of the AC_wave [Hz]
-            N... number of harmonics to be extracted
-            w... a list containing widths for a rectangular function when separating harmonics [Hz]
-            current... the current array to be analysed, the class does this by itself, if using FFT_anlyse_data/sim
+            - f: frequency of the AC_wave [Hz]
+            - N: number of harmonics to be extracted
+            - w: a list containing widths for a rectangular function when separating harmonics [Hz]
+            - current: the current array to be analysed, the class does this by itself, if using FFT_anlyse_data/sim
         """
         
         def rectangular(f,w0,w):
@@ -554,9 +595,9 @@ class ElectroKitty:
         Function that uses FT to analyse data and get harmonic currents, as well as the FT of the data
         
         Parameters:
-            f... base frequency to use when seprateting harmonics
-            N... number of harmonics to generate
-            w... a list containing the widths for the rectangular function
+            - f: base frequency to use when seprateting harmonics
+            - N: number of harmonics to generate
+            - w: a list containing the widths for the rectangular function
         """
         self.sp, self.freq, self.I_har_data=self.FFT_analysis(f, N, w, self.I_data)
     
@@ -565,9 +606,9 @@ class ElectroKitty:
         Function that uses FT to analyse simulation and get harmonic currents, as well as the FT of the data
         
         Parameters:
-            f... base frequency to use when seprateting harmonics
-            N... number of harmonics to generate
-            w... a list containing the widths for the rectangular function
+            - f: base frequency to use when seprateting harmonics
+            - N: number of harmonics to generate
+            - w: a list containing the widths for the rectangular function
         """
         self.sp, self.freq, self.I_harmonics=self.FFT_analysis(f, N, w, self.current)
     
@@ -576,14 +617,14 @@ class ElectroKitty:
         Function to plot the generated harmonics. The output is N plots, each beeing a harmonic
         
         Parameters:
-            plot_sim... True to plot the simulated harmonics
-            plot_data... True to plot harmonics form data
+            - plot_sim: True to plot the simulated harmonics
+            - plot_data: True to plot harmonics form data
             
             !one of these must be True
             
-            w... choosing what kind of plot to make
-                0 - i_har vs.t
-                1 - i_har vs. E_dc
+            - w: choosing what kind of plot to make
+                - 0 - i_har vs.t
+                - 1 - i_har vs. E_dc
         """
         if plot_sim:
             I_hars=self.I_harmonics
@@ -632,25 +673,40 @@ class ElectroKitty:
         plt.xlabel("frequency [Hz]")
         plt.ylabel("$log_{10}$($I_{FT}$) [dB]")
         
-    def Plot_simulation(self, Title="",label="",x_label=""):
+    def Plot_simulation(self, Title="",label="", plot_with_correction = False):
         """
         Function plots the simulated current vs. potential used in the simulation
+
+        Optional: declare the title and label for your simulation. 
+        Plot the simulation with IR correction, will correct for the Ru vaule in you cell_const
         """
         plt.figure("Base_signal")
         plt.title("Simulated signal "+Title)
-        plt.plot(self.E_generated,self.current,label=label)
-        plt.xlabel(x_label)
+        if plot_with_correction:
+            self.IR_correct_data(correct_simulation=True)
+            plt.plot(self.E_corrected, self.current, label=label)
+        else:
+            plt.plot(self.E_generated, self.current, label=label)
+        plt.xlabel("E [V]")
         plt.ylabel("I [A]")
         plt.show()
         
-    def Plot_data(self, Title="",label="",x_label=""):
+    def Plot_data(self, Title="",label="", plot_with_correction = True):
         """
-        Function plots the data current vs. data potential
+        Function plots the data current vs. data potential 
+
+        Optional: declare the title and label for your data. 
+        Plot the data with IR correction, will correct for the Ru vaule in you cell_const
         """
+        
         plt.figure("Base_signal")
         plt.title("Simulated signal "+Title)
-        plt.plot(self.E_generated,self.I_data,label=label)
-        plt.xlabel(x_label)
+        if plot_with_correction:
+            self.IR_correct_data(correct_simulation=True)
+            plt.plot(self.E_corrected, self.current, label=label)
+        else:
+            plt.plot(self.E_generated, self.current, label=label)
+        plt.xlabel("E [V]")
         plt.ylabel("I [A]")
         plt.show()
     
@@ -671,9 +727,9 @@ class ElectroKitty:
         The plot is as (t, x, c)
         
         Parameters:
-            species_num... the list index of the species to be plotted
+            - species_num: the list index of the species to be plotted
             
-            to see which index a species has, you can call <class_name>.mechanism_list[0][1]
+        to see which index a species has, you can call <class_name>.mechanism_list[0][1]
         """
         
         def _find_gama(dx,xmax,nx):
@@ -711,13 +767,14 @@ class ElectroKitty:
         
         try:
             self.concentration_profile=self._update_conc_profile()
+            Z=self.concentration_profile[species_num][:,:len(self.x[:-2])]
         except:
-            pass
+            Z=self.concentration_profile[:,:len(self.x[:-2])]
+
         self.x=calc_x(self.t[-1], max(self.diffusion_const), self.spatial_info[0], self.spatial_info[1])
         fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
 
         X, Y = np.meshgrid(self.x[:-2]*10**3, self.t)
-        Z=self.concentration_profile[species_num][:,:len(self.x[:-2])]
         
         surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
                                linewidth=0, antialiased=False)
@@ -731,7 +788,7 @@ class ElectroKitty:
         
         plt.show()
         
-    def Plot_Adsorbed_species(self,Title="",label="",x_label="",mode=0):
+    def Plot_Adsorbed_species(self,Title="",label=""):
         """
         Function plots the surface concentration profile
         The plot is as: gama_i vs. potential in simulation
@@ -740,19 +797,17 @@ class ElectroKitty:
         """
         plt.figure("Adsorbed_species")
         plt.title("Adsorbed_species "+Title)
-        if mode==0:
-            plt.plot(self.E_generated,self.surface_profile,label=label)
-            plt.xlabel(x_label)
-            plt.ylabel("theta")
-            plt.legend(self.mechanism_list[0][0])
-            plt.show()
-        else:
-            plt.plot(self.t,self.surface_profile,label=label)
-            plt.xlabel(x_label)
-            plt.ylabel("theta")
-            plt.show()
+        plt.plot(self.E_generated,self.surface_profile,label=label)
+        plt.xlabel("E [V]")
+        plt.ylabel("theta")
+        plt.legend(self.mechanism_list[0][0])
+        plt.show()
     
     def Plot_MCMC_mean_chain(self):
+        """
+        Function for plotting the mean Markov chain obtained via MCMC sampling.
+        Creates a plot for each parameter showing their changes during sampling.
+        """
         n_par = len(self.mean_chain[0, :])
         fig, axes = plt.subplots(n_par)
         for i in range(n_par):
@@ -761,7 +816,15 @@ class ElectroKitty:
         
         axes[-1].set_xlabel("samples")
         
-    def Plot_MCMC_parameter_dist(self):
+    def Plot_MCMC_parameter_dist(self, bins = 20):
+        """
+        Function for showing the complete parameter distribution.
+
+        On the diagonal are histogram plots for all parameters. On the diagonals are the scatter plots for two estimated constants.
+
+        Parameters:
+            - bins: the histogram bins, default is 20
+        """
         n_par = len(self.mean_chain[0, :])
         fig, axes = plt.subplots(n_par, n_par)
 
@@ -771,17 +834,23 @@ class ElectroKitty:
                 if i == n_par-1:
                     axes[-1, j].set_xlabel(self.xlabels[j])
                 if j == i:
-                    axes[i, j].hist(self.mean_chain[:,i], bins = 20)
+                    axes[i, j].hist(self.mean_chain[:,i], bins = bins)
                 elif j > i:
                     axes[i, j].remove()
                 else:
-                    axes[i, j].scatter(self.mean_chain[:,i], self.mean_chain[:,j])
+                    axes[i, j].scatter(self.mean_chain[:,j], self.mean_chain[:,i])
     
-    def Plot_MCMC_histogram(self):
+    def Plot_MCMC_histogram(self, bins = 30):
+        """
+        For each parameter esitmated via MCMC plots a histogram.
+
+        Parameters:
+            - bins: the histogram bins, default is 20
+        """
         n_par = len(self.mean_chain[0, :])
         fig, axes = plt.subplots(n_par)
         for i in range(n_par):
-            axes[i].hist(self.mean_chain[:,i], bins = 30)
+            axes[i].hist(self.mean_chain[:,i], bins = bins)
             axes[i].set_xlabel(self.xlabels[i])
         
             axes[i].set_ylabel("occurance")

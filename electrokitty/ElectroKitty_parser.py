@@ -43,7 +43,7 @@ class electrokitty_parser:
     
     def find_string_index(self, string, lis):
         """
-        given a string and list finds the index where the sring is located in the list
+        given a string and list finds the index where the string is located in the list
         """
         i=0
         for element in lis:
@@ -54,7 +54,7 @@ class electrokitty_parser:
     
     def get_index(self, string, master_list):
         """
-        wrapper function for previous function that gives the correct index given that he species is either adsorbed or not
+        wrapper function for previous function that gives the correct index given that the species is either adsorbed or not
         """
         if string in master_list[0]:
             return self.find_string_index(string, master_list[0])

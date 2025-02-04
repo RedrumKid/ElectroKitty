@@ -160,16 +160,16 @@ class electrokitty_loss():
         Function that generates the tells list and gammamax
         
         Parameters:
-            kin... kinetic constants to be fitted
-            species_information... initial conditions
-            cell_const... cell constants
-            isotherm... isotherm constants
+            - kin: kinetic constants to be fitted
+            - species_information: initial conditions
+            - cell_const: cell constants
+            - isotherm: isotherm constants
             
-            fit_... used to create tells
+            - fit_: used to create tells
         
-        tells... list containing intigers that tell the simulator whetehr to update a certain parameter
+        tells: list containing intigers that tell the simulator whetehr to update a certain parameter
         the first element is the number of sets of kinetic parameters, other values are used to correctly distrubute the guess in the simulator
-        gammamax... the position in the species_information of the maximum surface concentration that is fitted
+        gammamax: the position in the species_information of the maximum surface concentration that is fitted
         
         """
         tells=[]
@@ -279,17 +279,17 @@ class electrokitty_loss():
         for either CMA-ES or MCMC. Both algorithms follow the same rules
         
         The default is:
-            alpha... 0,1
-            k0... 0, 100*k0 or 10
-            E0... -0.5+min(E), 0.5+max(E)
+            - alpha: 0,1
+            - k0: 0, 100*k0 or 10
+            - E0: -0.5+min(E), 0.5+max(E)
             
-            kf, kb... 0,100*k
+            - kf, kb: 0,100*k
             
-            Cdl... 0,100*Cdl
-            Ru... 0,100*Ru
-            A... 0,100*A
-            gammamax... 0,100*gammamax
-            isotherm... -100*iso,100*iso or -0.1,0.1 
+            - Cdl: 0,100*Cdl
+            - Ru: 0,100*Ru
+            - A: 0,100*A
+            - gammamax: 0,100*gammamax
+            - isotherm: -100*iso,100*iso or -0.1,0.1 
         """
         guess=guess.tolist()
         lower_bound=[]

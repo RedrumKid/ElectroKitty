@@ -14,6 +14,12 @@ using namespace std::chrono;
 namespace py = pybind11;
 
 /*
+The C++ implementation of the Python simulator
+Binded with Pybind11 to Python. It is compiled seperately to the rest of the library.
+The Pybind11 bind is done at the end, the rest of the code is the simulator
+*/
+
+/*
 pomembni zapiski za c++ simulator:
 
 -nujno mora biti spectator pravilono nastavljen
@@ -25,6 +31,11 @@ pomembni zapiski za c++ simulator:
 
 class Electrokitty_simulator: MINPAC{
 public:
+
+/*
+The simulator class and variable declarations. Using the vectro library, which is standard with most compilers.
+The vectors are the same as with Python, except mechanism list, this one is chopped up, since C++ does not like arrays of mixed types
+*/
         double F;
         double R;
         double PI;
@@ -66,6 +77,7 @@ public:
 
 // ######## funkcije
         Electrokitty_simulator(){
+                /*Initialization, just to set up the constants*/
                 F = 96485.3321;
                 R = 8.314;
                 PI = 3.141592653589793238462643383279502884197;
@@ -84,6 +96,7 @@ public:
         vector<vector<int>> stypes,
         vector<vector<int>> sr_ind,
         vector<double> snum_el){
+                /*This function set the class constants, updates the spectarot list, still WIP*/
                 cell_const = scell_const;
                 diffusion_const = sdiffusion_const;
                 isotherm = sisotherm;
