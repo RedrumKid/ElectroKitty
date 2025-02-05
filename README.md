@@ -22,7 +22,7 @@ Install those and the rest is taken care of by.
 ## Getting started
 
 To get started with ElectroKitty checkout the tutorials found in the tutorial folder.
-There you will find 6 tutorials of which 5 cover the more basic topics behind ElectroKitty, while 
+There you will find 6 tutorials of which 5 cover the more basic utilities of ElectroKitty, while 
 the 6th tutorial covers some more advanced ideas. 
 
 The documentation for ElectroKitty can be found at: https://electrokitty.readthedocs.io/en/latest/.
@@ -33,7 +33,7 @@ This project welcomes any contribution, wheter it be code or a simple bug report
 Bug reports should be reported on GitHub or via email. 
 If you wish to contribute code to the project do so via a pull request or email me.
 
-Suggestions on how to further develop the project are welcome, but do not that not everything will be used.
+Suggestions on how to further develop the project are welcome.
 
 ## Licence
 
