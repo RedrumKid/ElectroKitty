@@ -17,7 +17,7 @@ To update the package run:
 `pip intall electrokitty --upgrade`
 
 Note that during installation Pybind11 might ask you to download Microsoft build tools if on Windows.
-Install those and the rest is taken care of by.
+Install those and the rest is taken care of.
 
 ## Getting started
 
