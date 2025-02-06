@@ -194,8 +194,8 @@ class ElectroKitty:
                               self.mechanism_list[0], self.mechanism_list[1], 
                               self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
                               )
-    	self.loss_function=electrokitty_loss(self.kin, self.species_information, self.cell_const
-                                         ,self.isotherm, self.I_data)
+	
+	self.loss_function=electrokitty_loss(self.kin, self.species_information, self.cell_const ,self.isotherm, self.I_data)
         self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
         self.simulator.set_simulation_programm(self.t, self.E_generated)
     
