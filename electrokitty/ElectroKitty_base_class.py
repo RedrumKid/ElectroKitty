@@ -19,6 +19,7 @@ from .ElectroKitty_parser import electrokitty_parser
 from .ElectroKitty_loss_functions import electrokitty_loss
 from .ElectroKitty_optimization_controler import electrokitty_optimization_controller
 from .ElectroKitty_MCMC_sampler import electrokitty_sampler
+from .ElectroKitty_simulator import electrokitty_simulator
 from cpp_ekitty_simulator import cpp_ekitty_simulator
 
 class ElectroKitty:
@@ -73,7 +74,7 @@ class ElectroKitty:
         self.xlabels=None
         
         self.Parser=electrokitty_parser(string)
-        self.simulator=cpp_ekitty_simulator()
+        self.simulator=electrokitty_simulator()
         self.optimizer=None
         self.loss_function=None
         self.MCMC_sampler=None
@@ -116,15 +117,13 @@ class ElectroKitty:
         
         spectators = [np.ones(len(Species_information[0])),np.ones(len(Species_information[1]))]
         self.spectators = spectators
-
         self.mechanism_list=self.Parser.Parse_mechanism()
-        self.simulator.set_parameters(
-                              cell_const, Diffusion_const, isotherm, spectators, Spatial_info, Species_information, kin, 
-                              self.mechanism_list[0], self.mechanism_list[1], 
-                              self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
-                              )
-
-        self.simulator.set_simulation_programm(self.t, self.E_generated)
+        
+        self.simulator.give_simulation_constants(self.kin, self.cell_const, 
+                                                 self.diffusion_const, self.isotherm, 
+                                                 self.spatial_info, self.species_information)
+        
+        self.simulator.give_mechanism_list(self.mechanism_list)
 	
     def save(self, filename):
         """
@@ -188,14 +187,14 @@ class ElectroKitty:
         
         self.Parser=electrokitty_parser(self.string)
         self.mechanism_list=self.Parser.Parse_mechanism()
-        self.simulator.set_parameters(
-                              self.cell_const, self.diffusion_const, self.isotherm, self.spectators, 
-                              self.spatial_info, self.species_information, self.kin, 
-                              self.mechanism_list[0], self.mechanism_list[1], 
-                              self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
-                              )
+        self.simulator.give_simulation_constants(self.kin, self.cell_const, 
+                                                 self.diffusion_const, self.isotherm, 
+                                                 self.spatial_info, self.species_information)
+        
+        self.simulator.give_mechanism_list(self.mechanism_list)
+        self.simulator.give_simulation_program(self.t, self.E_generated)
 	
-	self.loss_function=electrokitty_loss(self.kin, self.species_information, self.cell_const ,self.isotherm, self.I_data)
+        self.loss_function=electrokitty_loss(self.kin, self.species_information, self.cell_const ,self.isotherm, self.I_data)
         self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
         self.simulator.set_simulation_programm(self.t, self.E_generated)
     
@@ -255,10 +254,15 @@ class ElectroKitty:
          - E, I, t in this order
         """
         
+        self.simulator.give_simulation_program(self.t, self.E_generated)
+        
         self.current = self.simulator.simulate()
         self.E_Corr = self.simulator.give_E_corr()
         self.surface_profile = self.simulator.give_surf_profile()
         self.concentration_profile = self.simulator.give_concentration_profile()
+        
+        self.current, self.E_Corr, self.surface_profile, self.concentration_profile = self.simulator.simulate()
+        
         return self.E_generated, self.current, self.t
         
     ####################### Functions for generating potential programs
@@ -365,7 +369,7 @@ class ElectroKitty:
                                           fit_A=fit_A, fit_iso=fit_iso)
         self.loss_function.set_constants(self.diffusion_const, self.spectators, self.spatial_info, self.mechanism_list, self.t, self.E_generated)
         self.tells, self.gammaposition = self.loss_function.give_tells_gp()
-        self.simulator.create_optimization_problem(self.tells, self.gammaposition)
+
         self.loss_function.update_ysim(self.simulator.calc_from_guess)
         
         if algorithm != "Nelder-Mead":

@@ -8,8 +8,68 @@ Created on Thu Aug 29 10:47:28 2024
 import sys
 import numpy as np
 import scipy.optimize as sciop
+from cpp_ekitty_simulator import cpp_ekitty_simulator
 
 class electrokitty_simulator:
+    
+    def __init__(self):
+        self.i_mean = None
+        self.cell_const=None
+        self.diffusion_const=None
+        self.isotherm=None
+        self.spectators=None
+        self.spatial_info=None
+        self.species_information=None
+        self.kin=None
+        
+        self.mechanism_list = None
+        
+        self.simulator = None
+    
+    def check_type(self, param):
+        if type(param) is float or type(param) is int:
+            return True
+        else:
+            return False
+    
+    def give_simulation_constants(self,kin, cell_const, 
+                          Diffusion_const, isotherm,Spatial_info, 
+                          Species_information, spectators=False):
+        
+        self.cell_const=cell_const
+        self.diffusion_const=Diffusion_const
+        self.isotherm=isotherm
+        self.spectators=spectators
+        self.spatial_info=Spatial_info
+        self.species_information=Species_information
+        self.kin=kin
+    
+    def give_mechanism_list(self, mechanism_list):
+        self.mechanism_list = mechanism_list
+    
+    def give_simulation_program(self, t, E_gen):
+        self.t = t
+        self.E_gen = E_gen
+    
+    def simulate(self):
+        self.simulator = cpp_ekitty_simulator()
+        self.simulator.set_parameters(
+                              self.cell_const, self.diffusion_const, self.isotherm, self.spectators, 
+                              self.spatial_info, self.species_information, self.kin, 
+                              self.mechanism_list[0], self.mechanism_list[1], 
+                              self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
+                              )
+
+        self.simulator.set_simulation_programm(self.t, self.E_generated)
+        
+        current = self.simulator.simulate()
+        E_Corr = self.simulator.give_E_corr()
+        surface_profile = self.simulator.give_surf_profile()
+        concentration_profile = self.simulator.give_concentration_profile()
+        
+        return current, E_Corr, surface_profile, concentration_profile
+
+class python_electrokitty_simulator:
     """
     Python version of the simulator
     ElectroKitty uses a c++ implementation of this code
