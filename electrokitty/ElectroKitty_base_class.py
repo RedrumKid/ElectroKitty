@@ -256,11 +256,6 @@ class ElectroKitty:
         
         self.simulator.give_simulation_program(self.t, self.E_generated)
         
-        self.current = self.simulator.simulate()
-        self.E_Corr = self.simulator.give_E_corr()
-        self.surface_profile = self.simulator.give_surf_profile()
-        self.concentration_profile = self.simulator.give_concentration_profile()
-        
         self.current, self.E_Corr, self.surface_profile, self.concentration_profile = self.simulator.simulate()
         
         return self.E_generated, self.current, self.t

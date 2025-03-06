@@ -43,6 +43,8 @@ class electrokitty_simulator:
         self.spatial_info=Spatial_info
         self.species_information=Species_information
         self.kin=kin
+        spectators = [np.ones(len(Species_information[0])),np.ones(len(Species_information[1]))]
+        self.spectators = spectators
     
     def give_mechanism_list(self, mechanism_list):
         self.mechanism_list = mechanism_list
@@ -60,7 +62,7 @@ class electrokitty_simulator:
                               self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
                               )
 
-        self.simulator.set_simulation_programm(self.t, self.E_generated)
+        self.simulator.set_simulation_programm(self.t, self.E_gen)
         
         current = self.simulator.simulate()
         E_Corr = self.simulator.give_E_corr()
