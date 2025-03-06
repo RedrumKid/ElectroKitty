@@ -596,8 +596,8 @@ private:
                 ga = params.A*F*params.calc_current(2, bound_slice, x[n-2]);
 
                 f[n-2] = params.pnom - x[n-2] - params.Ru*ga - params.Ru*x[n-1];
-                f[n-1] = (1+params.Ru*params.Cdl/params.dt)*x[n-1] - params.Cdl*params.delta
-                         - params.Ru*params.Cdl*params.cp[n-1]/params.dt; 
+                f[n-1] = (1+params.A*params.Ru*params.Cdl/params.dt)*x[n-1] - params.A*params.Cdl*params.delta
+                         - params.Ru*params.A*params.Cdl*params.cp[n-1]/params.dt; 
                 
         }
 };

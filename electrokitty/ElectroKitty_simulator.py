@@ -6,6 +6,7 @@ Created on Thu Aug 29 10:47:28 2024
 """
 
 import sys
+import itertools
 import numpy as np
 import scipy.optimize as sciop
 from cpp_ekitty_simulator import cpp_ekitty_simulator
@@ -14,13 +15,18 @@ class electrokitty_simulator:
     
     def __init__(self):
         self.i_mean = None
-        self.cell_const=None
-        self.diffusion_const=None
-        self.isotherm=None
-        self.spectators=None
-        self.spatial_info=None
-        self.species_information=None
-        self.kin=None
+        self.cell_const = None
+        self.diffusion_const = None
+        self.isotherm = None
+        self.spectators = None
+        self.spatial_info = None
+        self.species_information = None
+        self.kin = None
+        self.simulate_with_dispersion = False
+        self.dispersed_species_information = None
+        self.dispersed_cell_const = None
+        self.dispersed_isotherm = None
+        self.dispersed_kin = None
         
         self.mechanism_list = None
         
@@ -31,6 +37,41 @@ class electrokitty_simulator:
             return True
         else:
             return False
+    
+    def check_for_params(self, some_list):
+        scratch_list = []
+        dispersion_check = False
+        for ind in range(len(some_list)):
+            if self.check_type(some_list[ind]):
+                scratch_list.append(True)
+            else: 
+                scratch_list.append(False)
+                dispersion_check = True
+        return scratch_list, dispersion_check
+    
+    def create_disp_lists(self):
+        self.dispersed_cell_const, check = self.check_for_params(self.cell_const)
+        if check:
+                self.simulate_with_dispersion = check
+
+        self.dispersed_isotherm, check = self.check_for_params(self.isotherm)
+        if check:
+                self.simulate_with_dispersion = check
+
+        self.dispersed_species_information = []
+        for spec_in in self.species_information:
+            in_between, check = self.check_for_params(spec_in)
+            self.dispersed_species_information.append(in_between)
+            if check:
+                self.simulate_with_dispersion = check
+        
+        self.dispersed_kin = []
+        for ki in self.kin:
+            in_between, check = self.check_for_params(ki)
+            self.dispersed_kin.append(in_between)
+            if check:
+                self.simulate_with_dispersion = check
+            
     
     def give_simulation_constants(self,kin, cell_const, 
                           Diffusion_const, isotherm,Spatial_info, 
@@ -45,6 +86,8 @@ class electrokitty_simulator:
         self.kin=kin
         spectators = [np.ones(len(Species_information[0])),np.ones(len(Species_information[1]))]
         self.spectators = spectators
+
+        self.create_disp_lists()
     
     def give_mechanism_list(self, mechanism_list):
         self.mechanism_list = mechanism_list
@@ -52,24 +95,187 @@ class electrokitty_simulator:
     def give_simulation_program(self, t, E_gen):
         self.t = t
         self.E_gen = E_gen
-    
-    def simulate(self):
-        self.simulator = cpp_ekitty_simulator()
-        self.simulator.set_parameters(
-                              self.cell_const, self.diffusion_const, self.isotherm, self.spectators, 
-                              self.spatial_info, self.species_information, self.kin, 
-                              self.mechanism_list[0], self.mechanism_list[1], 
-                              self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
-                              )
 
-        self.simulator.set_simulation_programm(self.t, self.E_gen)
+    def create_weights(self, fun, x):
+        ws = []
+        points = []
+        for i in range(1, len(x)):
+            ws.append((x[i]-x[i-1])*fun((x[i]+x[i-1])/2))
+            points.append((x[i]+x[i-1])/2)
+        return np.array(ws), np.array(points)
+
+    def create_integration_scale(self, xmin, xmax, N):
+        return np.linspace(xmin, xmax, N+1)
+
+    def create_dist_simulation_list(self):
+        # 0-kin; 1-spec_info; 2-cell_const; 3-iso
+        simulation_list = []
+        ws = []
+        xs = []
+        # check kin
+        for i in range(len(self.dispersed_kin)):
+            for j in range(len(self.dispersed_kin[i])):
+                if self.dispersed_kin[i][j] == False:
+                    w, x = self.create_weights(self.kin[i][j][0], 
+                                               self.create_integration_scale(self.kin[i][j][2], self.kin[i][j][3], self.kin[i][j][1]))
+                    if self.kin[i][j][4] == "log":
+                        x = np.exp(x)
+                    simulation_list.append([0, [i, j]])
+                    ws.append(w)
+                    xs.append(x)
         
-        current = self.simulator.simulate()
-        E_Corr = self.simulator.give_E_corr()
-        surface_profile = self.simulator.give_surf_profile()
-        concentration_profile = self.simulator.give_concentration_profile()
+        # check species_information
+        for i in range(len(self.dispersed_species_information)):
+            for j in range(len(self.dispersed_species_information[i])):
+                if self.dispersed_species_information[i][j] == False:
+                    w, x = self.create_weights(self.species_information[i][j][0], 
+                                               self.create_integration_scale(self.species_information[i][j][2], 
+                                                                             self.species_information[i][j][3], self.species_information[i][j][1]))
+                    if self.species_information[i][j][4] == "log":
+                        x = np.exp(x)
+                    simulation_list.append([1, [i, j]])
+                    ws.append(w)
+                    xs.append(x)
+
+        # check cell_const
+        for i in range(len(self.dispersed_cell_const)):
+            if self.dispersed_cell_const[i] == False:
+                w, x = self.create_weights(self.cell_const[i][0], self.create_integration_scale(self.cell_const[i][2],
+                                                                                                self.cell_const[i][3], self.cell_const[i][1]))
+                if self.cell_const[i][4] == "log":
+                    x = np.exp(x)
+                simulation_list.append([2, [i, 0]])
+                ws.append(w)
+                xs.append(x)
+        
+        # check isotherm
+        for i in range(len(self.dispersed_isotherm)):
+            if self.dispersed_isotherm[i] == False:
+                w, x = self.create_weights(self.isotherm[i][0], self.create_integration_scale(self.isotherm[i][2],
+                                                                                              self.isotherm[i][3], self.isotherm[i][1]))
+                if self.isotherm[i][4] == "log":
+                    x = np.exp(x)
+                simulation_list.append([3, [i, 0]])
+                ws.append(w)
+                xs.append(x)
+        return simulation_list, ws, xs
+
+    def simulate_dispersion(self):
+        simulation_list, ws, xs = self.create_dist_simulation_list()
+
+        mean_i = 0
+        mean_E_corr = 0
+        mean_adsorbed_spec = 0
+        mean_conc_prof = 0
+
+        kin = self.kin
+        cell_const = self.cell_const
+        species_info = self.species_information
+        iso = self.isotherm
+        
+        for combinations in zip(itertools.product(*ws), itertools.product(*xs)):
+            product = 1
+            for w in combinations[0]:
+                product *= w
+
+            for ind in range(len(combinations[1])):
+                if simulation_list[ind][0] == 0:
+                    kin[simulation_list[ind][1][0]][simulation_list[ind][1][1]] = combinations[1][ind]
+                elif simulation_list[ind][0] == 1:
+                    species_info[simulation_list[ind][1][0]][simulation_list[ind][1][1]] = combinations[1][ind]
+                elif simulation_list[ind][0] == 2:
+                    cell_const[simulation_list[ind][1][0]] = combinations[1][ind]
+                elif simulation_list[ind][0] == 3:
+                    iso[simulation_list[ind][1][0]] = combinations[1][ind]
+                
+            self.simulator = cpp_ekitty_simulator()
+            self.simulator.set_parameters(
+                                cell_const, self.diffusion_const, iso, self.spectators, 
+                                self.spatial_info, species_info, kin, 
+                                self.mechanism_list[0], self.mechanism_list[1], 
+                                self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
+                                )
+
+            self.simulator.set_simulation_programm(self.t, self.E_gen)
+            
+            current = self.simulator.simulate()
+            E_Corr = self.simulator.give_E_corr()
+            surface_profile = self.simulator.give_surf_profile()
+            concentration_profile = self.simulator.give_concentration_profile()
+
+            mean_i += product*current
+            mean_E_corr += product*E_Corr
+            mean_adsorbed_spec += product*surface_profile
+            mean_conc_prof += product*concentration_profile
+
+        return mean_i, mean_E_corr, mean_adsorbed_spec, mean_conc_prof
+
+
+    def simulate(self):
+
+        if self.simulate_with_dispersion:
+            #print(self.simulate_dispersion())
+            current, E_Corr, surface_profile, concentration_profile = self.simulate_dispersion()
+
+        else: 
+            self.simulator = cpp_ekitty_simulator()
+            self.simulator.set_parameters(
+                                self.cell_const, self.diffusion_const, self.isotherm, self.spectators, 
+                                self.spatial_info, self.species_information, self.kin, 
+                                self.mechanism_list[0], self.mechanism_list[1], 
+                                self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
+                                )
+
+            self.simulator.set_simulation_programm(self.t, self.E_gen)
+            
+            current = self.simulator.simulate()
+            E_Corr = self.simulator.give_E_corr()
+            surface_profile = self.simulator.give_surf_profile()
+            concentration_profile = self.simulator.give_concentration_profile()
         
         return current, E_Corr, surface_profile, concentration_profile
+    
+
+    def unpack_fit_params(self, guess, tells, gamma_position):
+        
+        guess=guess.tolist()
+        kinetics=[]
+        cell_params=[self.cell_const[0]]
+        spec_info=self.species_information
+        
+        index1=0
+    
+        for i in range(tells[0]):
+            index2=tells[i+1]
+            kinetics.append(guess[index1:index2])
+            index1=index2
+    
+        if tells[tells[0]+1] != 0:
+            cell_params.append(guess[tells[tells[0]+1]]) #Ru
+        else:
+            cell_params.append(self.cell_const[1])
+        
+        if tells[tells[0]+2] != 0:
+            cell_params.append(guess[tells[tells[0]+2]]) #Cdl
+        else:
+            cell_params.append(self.cell_const[2])
+        
+        if tells[tells[0]+3] != 0:
+            cell_params.append(guess[tells[tells[0]+3]]) #A
+        else:
+            cell_params.append(self.cell_const[3])
+        
+        if tells[tells[0]+4] != 0:
+            spec_info[0][gamma_position] = guess[tells[tells[0]+4]] #gammamax
+        else:
+           pass
+           
+        if tells[tells[0]+5]!=0:
+            isotherm=guess[tells[tells[0]+5]:] #isotherm
+        else:
+            isotherm=self.isotherm
+        
+        return kinetics, cell_params, spec_info, isotherm
 
 class python_electrokitty_simulator:
     """
