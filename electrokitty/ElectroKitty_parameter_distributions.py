@@ -53,3 +53,9 @@ class gaussian_distribution:
         function to return the mean
         """
         return self.mu
+    
+    def return_sigma(self):
+        """
+        function to return the sigma
+        """
+        return self.sigma
