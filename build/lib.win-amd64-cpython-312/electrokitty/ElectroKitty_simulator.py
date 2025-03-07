@@ -172,10 +172,10 @@ class electrokitty_simulator:
         mean_adsorbed_spec = 0
         mean_conc_prof = 0
 
-        kin = self.sim_kin.copy()
-        cell_const = self.sim_cell_const.copy()
-        species_info = self.sim_species_information.copy()
-        iso = self.sim_isotherm.copy()
+        kin = list(self.sim_kin)
+        cell_const = list(self.sim_cell_const)
+        species_info = list(self.sim_species_information)
+        iso = list(self.sim_isotherm)
         
         for combinations in zip(itertools.product(*ws), itertools.product(*xs)):
             product = 1
@@ -231,10 +231,10 @@ class electrokitty_simulator:
         Function takes the guess, tells and gammma_position to reconstruct the lists for the simulator
         """
         guess=guess.tolist()
-        kinetics=kins
-        cell_params=cell_consts
-        spec_info=species_informations
-        iso = isotherms
+        kinetics=list(kins)
+        cell_params=list(cell_consts)
+        spec_info=list(species_informations)
+        iso = list(isotherms)
         
         for info in tells:
             if info[0] == 0:
@@ -290,10 +290,10 @@ class electrokitty_simulator:
         else: 
             self.simulator = cpp_ekitty_simulator()
             self.simulator.set_parameters(
-                                self.cell_const, self.diffusion_const, self.isotherm, self.spectators, 
-                                self.spatial_info, self.species_information, self.kin, 
-                                self.mechanism_list[0], self.mechanism_list[1], 
-                                self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
+                                self.sim_cell_const, self.sim_diffusion_const, self.sim_isotherm, self.sim_spectators, 
+                                self.sim_spatial_info, self.sim_species_information, self.sim_kin, 
+                                self.sim_mechanism_list[0], self.sim_mechanism_list[1], 
+                                self.sim_mechanism_list[2], self.sim_mechanism_list[3], self.sim_mechanism_list[4]
                                 )
 
             self.simulator.set_simulation_programm(self.t, self.E_gen)

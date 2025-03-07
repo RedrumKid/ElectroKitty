@@ -105,15 +105,15 @@ class ElectroKitty:
         
         """
         
-        self.cell_const=cell_const.copy()
-        self.diffusion_const=Diffusion_const.copy()
+        self.cell_const=tuple(cell_const)
+        self.diffusion_const=Diffusion_const
         self.number_of_surf_conf=len(Species_information[0])
         self.number_of_diss_spec=len(Species_information[1])
-        self.isotherm=isotherm.copy()
+        self.isotherm=tuple(isotherm)
         self.spectators=spectators
-        self.spatial_info=Spatial_info.copy()
-        self.species_information=Species_information.copy()
-        self.kin=kin.copy()
+        self.spatial_info=Spatial_info
+        self.species_information=tuple(Species_information)
+        self.kin=tuple(kin)
         
         spectators = [np.ones(len(Species_information[0])),np.ones(len(Species_information[1]))]
         self.spectators = spectators
@@ -195,10 +195,11 @@ class ElectroKitty:
         self.simulator.give_simulation_program(self.t, self.E_generated)
 	
         self.loss_function=electrokitty_loss(self.kin, self.species_information, self.cell_const ,self.isotherm, self.I_data)
-        try:
-            self.xlabels = self.loss_function.create_axis_labels_old(self.tells, self.mechanism_list[0][0])
-        except:
-            self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
+        if self.tells != None:
+            try:
+                self.xlabels = self.loss_function.create_axis_labels_old(self.tells, self.mechanism_list[0][0])
+            except:
+                self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
     
     def set_data(self, E_data, i_data, t_data):
         """
@@ -542,7 +543,7 @@ class ElectroKitty:
         
         self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
         
-        self.update_after_min(np.average(self.mean_chain[:int(burn_in_per*n_samples),:-1],axis=0))
+        self.update_after_min(np.average(self.mean_chain[int(burn_in_per*n_samples):,:-1],axis=0))
         
         current_time=str(datetime.now())
         current_time=current_time.replace(" ", "_")

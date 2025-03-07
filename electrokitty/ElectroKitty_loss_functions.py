@@ -265,10 +265,10 @@ class electrokitty_loss():
         Function takes the guess, tells and gammma_position to reconstruct the lists for the simulator
         """
         guess=guess.tolist()
-        kinetics=kin
-        cell_params=cell_const
-        spec_info=species_information
-        iso = isotherm
+        kinetics=list(kin)
+        cell_params=list(cell_const)
+        spec_info=list(species_information)
+        iso = list(isotherm)
         
         for info in tells:
             if info[0] == 0:
@@ -418,14 +418,20 @@ class electrokitty_loss():
                 if info[-1]:
                     lower_bound.append(0)
                     lower_bound.append(10**-4)
-                    upper_bound.append(100*guess[info[1]])
+                    if guess[info[1]] == 0:
+                        upper_bound.append(1)
+                    else:
+                        upper_bound.append(100*guess[info[1]+1])
                     if guess[info[1]+1] == 0:
                         upper_bound.append(1)
                     else:
                         upper_bound.append(100*guess[info[1]+1])
                 else:
                     lower_bound.append(0)
-                    upper_bound.append(100*guess[info[1]])
+                    if guess[info[1]] == 0:
+                        upper_bound.append(1)
+                    else:
+                        upper_bound.append(100*guess[info[1]+1])
 
         lower_bound.append(0)
         upper_bound.append(1)
@@ -569,7 +575,7 @@ class electrokitty_loss():
             if info[0] == 3:
                 if info[-1]:
                     labels.append(r"$g_{"+a_spec[info[3]]+"}$")
-                    labels.append("$\sigma_{g}$")
+                    labels.append(r"$\sigma_{g}$")
                 else:
                     labels.append(r"$g_{"+a_spec[info[3]]+"}$")
 
