@@ -33,6 +33,10 @@ class electrokitty_simulator:
         self.gamapos = None
         
         self.sim_mechanism_list = None
+        self.save_kin = None
+        self.save_spec_info = None
+        self.save_cell_cons = None
+        self.save_isotherm = None
         
         self._simulator = None
     
@@ -99,6 +103,9 @@ class electrokitty_simulator:
     def give_simulation_program(self, ts, E_gens):
         self.t = ts
         self.E_gen = E_gens
+
+    def give_saved_cons(self):
+        return self.save_kin, self.save_spec_info, self.save_cell_cons, self.save_isotherm
 
     def create_weights(self, fun, x):
         ws = []

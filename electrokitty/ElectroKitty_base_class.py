@@ -58,6 +58,8 @@ class ElectroKitty:
         self.spatial_info=None
         self.species_information=None
         self.kin=None
+        self.safety_tuple = None
+        self.E_corrected = None
         
         self.x=None
         self.number_of_diss_spec=None
@@ -68,6 +70,7 @@ class ElectroKitty:
         self.fit_score=None
         self.tells=None
         self.gamaposition=None
+        self.gammaposition = None
         self.multi_core_MCMC=False
         self.chains=None
         self.mean_chain=None
@@ -104,7 +107,12 @@ class ElectroKitty:
             - spectators: not fully implemented, a list of 1 or 0 to use the species or not in the reaction
         
         """
-        
+        def create_copy_tuple(some_list):
+            copy = []
+            for arb in some_list:
+                copy.append(tuple(arb))
+            return tuple(copy)
+            
         self.cell_const=tuple(cell_const)
         self.diffusion_const=Diffusion_const
         self.number_of_surf_conf=len(Species_information[0])
@@ -114,7 +122,9 @@ class ElectroKitty:
         self.spatial_info=Spatial_info
         self.species_information=tuple(Species_information)
         self.kin=tuple(kin)
-        
+
+        self.safety_tuple = (create_copy_tuple(kin), create_copy_tuple(Species_information), tuple(cell_const), tuple(isotherm))
+
         spectators = [np.ones(len(Species_information[0])),np.ones(len(Species_information[1]))]
         self.spectators = spectators
         self.mechanism_list=self.Parser.Parse_mechanism()
@@ -260,7 +270,7 @@ class ElectroKitty:
         self.simulator.give_simulation_program(self.t, self.E_generated)
         
         self.current, self.E_Corr, self.surface_profile, self.concentration_profile = self.simulator.simulate()
-        
+        self.kin,  self.species_information, self.cell_const, self.isotherm = self.safety_tuple
         return self.E_generated, self.current, self.t
         
     ####################### Functions for generating potential programs
@@ -486,7 +496,13 @@ class ElectroKitty:
         self.simulator.give_simulation_program(self.t, self.E_generated)
         
         self.current, self.E_Corr, self.surface_profile, self.concentration_profile = self.simulator.simulate()
-
+        kine, cells, spinfo, isot = self.loss_function.unpack_fit_params(optimal, self.tells, self.gammaposition, self.kin, self.species_information,
+                                                                         self.cell_const, self.isotherm)
+        
+        self.kin=kine
+        self.cell_const=cells
+        self.species_information=spinfo
+        self.isotherm=isot
        
     def sample_parameter_distribution(self, n_samples=2000, burn_in_per=0.3, num_chains=1, multi_processing=False,
                                       fit_kin = True, fit_Cdl=False, fit_Ru=False, fit_gamamax=False,
@@ -555,8 +571,70 @@ class ElectroKitty:
         print(f"Finished sampling after iterations: {n_samples}")
         print(f"Parameters estimated for burn in being: {100*burn_in_per}% of samples")
     
-        
+    def update_params_after_burn_in(self, burn_in):
+        """
+        A function that updates the found parameters based on a new burn in period
+
+        Parameters:
+            -burn_in: intiger of how much the burn in period lasted, all parameters are computed from that index on
+        """
+        self.update_after_min(np.average(self.mean_chain[int(burn_in):,:-1],axis=0))
+        print("updated parameters and resimulated using those")
+    
     ##################### Functions for treating and ploting data
+    def print_fitting_parameters(self):
+        """
+        A function that returns all relevant list that were used when fitting as well as print out the optimal parameters.
+        """
+        print("Kinetic list:")
+        print_kin_list = []
+        for step in self.kin:
+            app_li = []
+            for param in step:
+                try:
+                    app_li.append([param[0].return_mean(), param[0].return_sigma()])
+                except:
+                    app_li.append(param)
+
+            print_kin_list.append(app_li)
+        print(print_kin_list)
+        print()
+        print("Initial condition:")
+        print_kin_list = []
+        for step in self.species_information:
+            app_li = []
+            for param in step:
+                try:
+                    app_li.append([param[0].return_mean(), param[0].return_sigma()])
+                except:
+                    app_li.append(param)
+
+            print_kin_list.append(app_li)
+        print(print_kin_list)
+        print()
+        print("Cell parameters:")
+        app_li = []
+        for param in self.cell_const:
+            try:
+                app_li.append([param[0].return_mean(), param[0].return_sigma()])
+            except:
+                app_li.append(param)
+
+        print(app_li)
+        print()
+        print("Interaction parameters:")
+        app_li = []
+        for param in self.isotherm:
+            try:
+                app_li.append([param[0].return_mean(), param[0].return_sigma()])
+            except:
+                app_li.append(param)
+
+        print(app_li)
+        print()
+
+        return self.kin, self.species_information, self.cell_const, self.isotherm
+
     def FFT_analysis(self, f,N,w, current):
         """
         Function which generates the FT of the data and separates the harmonics
@@ -768,16 +846,20 @@ class ElectroKitty:
             return x
         
         
-        try:
-            self.concentration_profile=self._update_conc_profile()
-        except:
-            pass
+        if self.number_of_diss_spec > 1:
+            try:
+                self.concentration_profile=self._update_conc_profile()
+            except:
+                pass
 
         self.x=calc_x(self.t[-1], max(self.diffusion_const), self.spatial_info[0], self.spatial_info[1])
         fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
 
         X, Y = np.meshgrid(self.x[:-2]*10**3, self.t)
-        Z=self.concentration_profile[species_num][:,:len(self.x[:-2])]
+        if self.number_of_diss_spec > 1:
+            Z=self.concentration_profile[species_num][:,:len(self.x[:-2])]
+        else:
+            Z=self.concentration_profile[:,:len(self.x[:-2])]
         surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
                                linewidth=0, antialiased=False)
         
