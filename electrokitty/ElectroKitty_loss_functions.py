@@ -457,10 +457,7 @@ class electrokitty_loss():
 
                 else:
                     lower_bound.append(-25)
-                    if guess[info[1]] == 0:
-                        upper_bound.append(10)
-                    else:
-                        upper_bound.append(100*guess[info[1]])
+                    upper_bound.append(10)
 
         lower_bound.append(0)
         upper_bound.append(1)
