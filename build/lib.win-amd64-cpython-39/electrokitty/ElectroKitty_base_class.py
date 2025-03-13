@@ -58,6 +58,8 @@ class ElectroKitty:
         self.spatial_info=None
         self.species_information=None
         self.kin=None
+        self.safety_tuple = None
+        self.E_corrected = None
         
         self.x=None
         self.number_of_diss_spec=None
@@ -68,6 +70,7 @@ class ElectroKitty:
         self.fit_score=None
         self.tells=None
         self.gamaposition=None
+        self.gammaposition = None
         self.multi_core_MCMC=False
         self.chains=None
         self.mean_chain=None
@@ -104,17 +107,24 @@ class ElectroKitty:
             - spectators: not fully implemented, a list of 1 or 0 to use the species or not in the reaction
         
         """
-        
-        self.cell_const=cell_const
+        def create_copy_tuple(some_list):
+            copy = []
+            for arb in some_list:
+                copy.append(tuple(arb))
+            return tuple(copy)
+            
+        self.cell_const=tuple(cell_const)
         self.diffusion_const=Diffusion_const
         self.number_of_surf_conf=len(Species_information[0])
         self.number_of_diss_spec=len(Species_information[1])
-        self.isotherm=isotherm
+        self.isotherm=tuple(isotherm)
         self.spectators=spectators
         self.spatial_info=Spatial_info
-        self.species_information=Species_information
-        self.kin=kin
-        
+        self.species_information=tuple(Species_information)
+        self.kin=tuple(kin)
+
+        self.safety_tuple = (create_copy_tuple(kin), create_copy_tuple(Species_information), tuple(cell_const), tuple(isotherm))
+
         spectators = [np.ones(len(Species_information[0])),np.ones(len(Species_information[1]))]
         self.spectators = spectators
         self.mechanism_list=self.Parser.Parse_mechanism()
@@ -184,7 +194,7 @@ class ElectroKitty:
         self.number_of_diss_spec, self.number_of_surf_conf, self.E_Corr = temp_dict[18:21]
         self.mechanism_list, self.fit_score, self.tells, self.gamaposition = temp_dict[21:25]
         self.multi_core_MCMC,self.chains,self.mean_chain = temp_dict[25:]
-        
+
         self.Parser=electrokitty_parser(self.string)
         self.mechanism_list=self.Parser.Parse_mechanism()
         self.simulator.give_simulation_constants(self.kin, self.cell_const, 
@@ -195,8 +205,11 @@ class ElectroKitty:
         self.simulator.give_simulation_program(self.t, self.E_generated)
 	
         self.loss_function=electrokitty_loss(self.kin, self.species_information, self.cell_const ,self.isotherm, self.I_data)
-        self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
-        self.simulator.set_simulation_programm(self.t, self.E_generated)
+        if self.tells != None:
+            try:
+                self.xlabels = self.loss_function.create_axis_labels_old(self.tells, self.mechanism_list[0][0])
+            except:
+                self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
     
     def set_data(self, E_data, i_data, t_data):
         """
@@ -257,7 +270,7 @@ class ElectroKitty:
         self.simulator.give_simulation_program(self.t, self.E_generated)
         
         self.current, self.E_Corr, self.surface_profile, self.concentration_profile = self.simulator.simulate()
-        
+        self.kin,  self.species_information, self.cell_const, self.isotherm = self.safety_tuple
         return self.E_generated, self.current, self.t
         
     ####################### Functions for generating potential programs
@@ -334,9 +347,9 @@ class ElectroKitty:
     ##################### Fitting to data
     
     
-    def fit_to_data(self, fit_Cdl=False, fit_Ru=False, fit_gamamax=False,
+    def fit_to_data(self,fit_kin = True,  fit_Cdl=False, fit_Ru=False, fit_gamamax=False,
                     fit_A=False, fit_iso=False, eqilibration=False, algorithm="Nelder-Mead",
-                    tolf=10**-11, tolx=10**-11):
+                    tolf=10**-11, tolx=10**-11, N_disp = 15):
         
         """
         Function which tries to fit kinetic parameters and others to current from data
@@ -361,10 +374,11 @@ class ElectroKitty:
         self.loss_function=electrokitty_loss(self.kin, self.species_information, self.cell_const
                                           ,self.isotherm, self.I_data,
                                           fit_Cdl=fit_Cdl, fit_Ru=fit_Ru, fit_gamamax=fit_gamamax,
-                                          fit_A=fit_A, fit_iso=fit_iso)
-        self.loss_function.set_constants(self.diffusion_const, self.spectators, self.spatial_info, self.mechanism_list, self.t, self.E_generated)
+                                          fit_A=fit_A, fit_iso=fit_iso, fit_kin=fit_kin, N_disp=N_disp)
+        
         self.tells, self.gammaposition = self.loss_function.give_tells_gp()
-
+        self.simulator.give_simulation_program(self.t, self.E_generated)
+        self.simulator.import_for_fitting(self.tells, self.gammaposition)
         self.loss_function.update_ysim(self.simulator.calc_from_guess)
         
         if algorithm != "Nelder-Mead":
@@ -375,7 +389,6 @@ class ElectroKitty:
         else:
             lower_bound=None
             upper_bound=None
-        
         self.optimizer=electrokitty_optimization_controller(self.loss_function.RMSE,
                                                             self.loss_function.guess,
                                                             algorithm=algorithm, 
@@ -393,9 +406,9 @@ class ElectroKitty:
         print()
         print("Finished Optimization and updated problem")
         
-    def fit_harmonics(self,  base_freq, N_harmonics, w, fit_Cdl=False, fit_Ru=False, fit_gamamax=False,
+    def fit_harmonics(self,  base_freq, N_harmonics, w, fit_kin = True,fit_Cdl=False, fit_Ru=False, fit_gamamax=False,
                     fit_A=False, fit_iso=False, eqilibration=False, algorithm="Nelder-Mead",
-                    tolf=10**-11, tolx=10**-11):
+                    tolf=10**-11, tolx=10**-11, N_disp = 15):
         """
         Function which tries to fit kinetic parameters and others to current harmonics generated from data
         
@@ -423,13 +436,12 @@ class ElectroKitty:
         self.loss_function=electrokitty_loss(self.kin, self.species_information, self.cell_const
                                           ,self.isotherm, self.I_data,
                                           fit_Cdl=fit_Cdl, fit_Ru=fit_Ru, fit_gamamax=fit_gamamax,
-                                          fit_A=fit_A, fit_iso=fit_iso)
+                                          fit_A=fit_A, fit_iso=fit_iso, fit_kin=fit_kin, N_disp=N_disp)
         
-        self.loss_function.set_constants(self.diffusion_const, self.spectators, self.spatial_info, self.mechanism_list, self.t, self.E_generated)
         self.tells, self.gammaposition = self.loss_function.give_tells_gp()
-        self.simulator.create_optimization_problem(self.tells, self.gammaposition)
+        self.simulator.give_simulation_program(self.t, self.E_generated)
+        self.simulator.import_for_fitting(self.tells, self.gammaposition)
         self.loss_function.update_ysim(self.simulator.calc_from_guess)
-
         self.loss_function.create_ACV_problem(base_freq, N_harmonics, self.I_har_data, self.t, w=w)
         
         if algorithm != "Nelder-Mead":
@@ -464,7 +476,8 @@ class ElectroKitty:
         Function that updates class parameters after it finished fitting
         All parameters are overwritten
         """
-        kine, cells, spinfo, isot = self.loss_function.unpack_fit_params(optimal, self.tells, self.gammaposition)
+        kine, cells, spinfo, isot = self.loss_function.unpack_fit_params(optimal, self.tells, self.gammaposition, self.kin, self.species_information,
+                                                                         self.cell_const, self.isotherm)
         
         self.kin=kine
         self.cell_const=cells
@@ -474,25 +487,25 @@ class ElectroKitty:
         spectators = [np.ones(len(self.species_information[0])),np.ones(len(self.species_information[1]))]
 
         self.mechanism_list=self.Parser.Parse_mechanism()
-        self.simulator.set_parameters(
-                              cells, self.diffusion_const, isot, spectators, self.spatial_info, spinfo, kine, 
-                              self.mechanism_list[0], self.mechanism_list[1], 
-                              self.mechanism_list[2], self.mechanism_list[3], self.mechanism_list[4]
-                              
-                              )
-
-        self.simulator.set_simulation_programm(self.t, self.E_generated)
+        self.simulator.give_simulation_constants(self.kin, self.cell_const, 
+                                                 self.diffusion_const, self.isotherm, 
+                                                 self.spatial_info, self.species_information)
         
+        self.simulator.give_mechanism_list(self.mechanism_list)
+        self.simulator.give_simulation_program(self.t, self.E_generated)
         
-        self.current = self.simulator.simulate()
-        self.E_Corr = self.simulator.give_E_corr()
-        self.surface_profile = self.simulator.give_surf_profile()
-        self.concentration_profile = self.simulator.give_concentration_profile()
-
+        self.current, self.E_Corr, self.surface_profile, self.concentration_profile = self.simulator.simulate()
+        kine, cells, spinfo, isot = self.loss_function.unpack_fit_params(optimal, self.tells, self.gammaposition, self.kin, self.species_information,
+                                                                         self.cell_const, self.isotherm)
+        
+        self.kin=kine
+        self.cell_const=cells
+        self.species_information=spinfo
+        self.isotherm=isot
        
     def sample_parameter_distribution(self, n_samples=2000, burn_in_per=0.3, num_chains=1, multi_processing=False,
-                                      fit_Cdl=False, fit_Ru=False, fit_gamamax=False,
-                                                      fit_A=False, fit_iso=False, eqilibration=False, bounds=None):
+                                      fit_kin = True, fit_Cdl=False, fit_Ru=False, fit_gamamax=False,
+                                                      fit_A=False, fit_iso=False, eqilibration=False, bounds=None, N_disp = 15):
         
         """
         Function which tries to fit kinetic parameters and others to data, using MCMC
@@ -520,7 +533,7 @@ class ElectroKitty:
         self.loss_function=electrokitty_loss(self.kin, self.species_information, self.cell_const
                                          ,self.isotherm, self.I_data,
                                          fit_Cdl=fit_Cdl, fit_Ru=fit_Ru, fit_gamamax=fit_gamamax,
-                                         fit_A=fit_A, fit_iso=fit_iso)
+                                         fit_A=fit_A, fit_iso=fit_iso, fit_kin = fit_kin, N_disp = N_disp)
         
         self.tells, self.gammaposition = self.loss_function.give_tells_gp()
         
@@ -528,11 +541,15 @@ class ElectroKitty:
             lower_bound, upper_bound = self.loss_function.create_lower_upper_bounds(self.loss_function.guess, self.tells,
                                                                                  self.E_generated)
             bounds=[lower_bound, upper_bound]
+        
         self.MCMC_sampler=electrokitty_sampler(n_samples, burn_in_per, num_chains, 
                      multi_processing, bounds, self.I_data)
 
         self.MCMC_sampler.set_constants(self.cell_const, self.diffusion_const, self.isotherm, self.spectators, self.spatial_info, self.species_information,
                                         self.kin, self.mechanism_list, self.t, self.E_generated, self.tells, self.gammaposition)
+        self.simulator.give_simulation_program(self.t, self.E_generated)
+        self.simulator.import_for_fitting(self.tells, self.gammaposition)
+        self.MCMC_sampler.give_y_sim(self.simulator.calc_from_guess)
 
         chains=self.MCMC_sampler.start_sampler(np.append(self.loss_function.guess, np.array([0.01*max(self.I_data)])))
         
@@ -541,7 +558,7 @@ class ElectroKitty:
         
         self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
         
-        self.update_after_min(np.average(self.mean_chain[:int(burn_in_per*n_samples),:-1],axis=0))
+        self.update_after_min(np.average(self.mean_chain[int(burn_in_per*n_samples):,:-1],axis=0))
         
         current_time=str(datetime.now())
         current_time=current_time.replace(" ", "_")
@@ -553,8 +570,70 @@ class ElectroKitty:
         print(f"Finished sampling after iterations: {n_samples}")
         print(f"Parameters estimated for burn in being: {100*burn_in_per}% of samples")
     
-        
+    def update_params_after_burn_in(self, burn_in):
+        """
+        A function that updates the found parameters based on a new burn in period
+
+        Parameters:
+            -burn_in: intiger of how much the burn in period lasted, all parameters are computed from that index on
+        """
+        self.update_after_min(np.average(self.mean_chain[int(burn_in):,:-1],axis=0))
+        print("updated parameters and resimulated using those")
+    
     ##################### Functions for treating and ploting data
+    def print_fitting_parameters(self):
+        """
+        A function that returns all relevant list that were used when fitting as well as print out the optimal parameters.
+        """
+        print("Kinetic list:")
+        print_kin_list = []
+        for step in self.kin:
+            app_li = []
+            for param in step:
+                try:
+                    app_li.append([param[0].return_mean(), param[0].return_sigma()])
+                except:
+                    app_li.append(param)
+
+            print_kin_list.append(app_li)
+        print(print_kin_list)
+        print()
+        print("Initial condition:")
+        print_kin_list = []
+        for step in self.species_information:
+            app_li = []
+            for param in step:
+                try:
+                    app_li.append([param[0].return_mean(), param[0].return_sigma()])
+                except:
+                    app_li.append(param)
+
+            print_kin_list.append(app_li)
+        print(print_kin_list)
+        print()
+        print("Cell parameters:")
+        app_li = []
+        for param in self.cell_const:
+            try:
+                app_li.append([param[0].return_mean(), param[0].return_sigma()])
+            except:
+                app_li.append(param)
+
+        print(app_li)
+        print()
+        print("Interaction parameters:")
+        app_li = []
+        for param in self.isotherm:
+            try:
+                app_li.append([param[0].return_mean(), param[0].return_sigma()])
+            except:
+                app_li.append(param)
+
+        print(app_li)
+        print()
+
+        return self.kin, self.species_information, self.cell_const, self.isotherm
+
     def FFT_analysis(self, f,N,w, current):
         """
         Function which generates the FT of the data and separates the harmonics
@@ -766,16 +845,20 @@ class ElectroKitty:
             return x
         
         
-        try:
-            self.concentration_profile=self._update_conc_profile()
-        except:
-            pass
+        if self.number_of_diss_spec > 1:
+            try:
+                self.concentration_profile=self._update_conc_profile()
+            except:
+                pass
 
         self.x=calc_x(self.t[-1], max(self.diffusion_const), self.spatial_info[0], self.spatial_info[1])
         fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
 
         X, Y = np.meshgrid(self.x[:-2]*10**3, self.t)
-        Z=self.concentration_profile[species_num][:,:len(self.x[:-2])]
+        if self.number_of_diss_spec > 1:
+            Z=self.concentration_profile[species_num][:,:len(self.x[:-2])]
+        else:
+            Z=self.concentration_profile[:,:len(self.x[:-2])]
         surf = ax.plot_surface(X, Y, Z, cmap=cm.coolwarm,
                                linewidth=0, antialiased=False)
         

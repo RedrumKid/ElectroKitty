@@ -389,7 +389,6 @@ class ElectroKitty:
         else:
             lower_bound=None
             upper_bound=None
-        
         self.optimizer=electrokitty_optimization_controller(self.loss_function.RMSE,
                                                             self.loss_function.guess,
                                                             algorithm=algorithm, 

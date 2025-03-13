@@ -330,7 +330,7 @@ class electrokitty_optimization_algorithms():
         """
         best_guess, es = cma.fmin2(fun, x, 0.1, 
                                    {"bounds": [lb, ub], 
-                                    "tolfun": tolf, "tolx": tolx},
+                                    "tolfun": tolf, "tolx": tolx, "verb_log": 0, "verb_filenameprefix": "electrokitty_outcmaes\\"},
                                    )
         
         return [best_guess, es.result.fbest], "cma package succeded"

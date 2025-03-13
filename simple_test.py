@@ -46,7 +46,7 @@ ic = [
 
 iso = [0,0]
 
-cc = [293, 0, 0, 10**-4]
+cc = [293, 10, 6, 10**-4]
 
 si = [0.0001, 20, 10**-5, 0]
 
@@ -59,7 +59,7 @@ problem.simulate()
 #plt.plot(ed, id)
 #plt.plot(ed, problem.current)
 #plt.show()
-problem.fit_to_data(N_disp=15, algorithm="CMA-ES")
+problem.fit_to_data(N_disp=15, algorithm="CMA-ES", fit_Ru=True, fit_Cdl=True, fit_iso=True)
 #problem.sample_parameter_distribution(n_samples=5, N_disp=5)
 problem.print_fitting_parameters()
 print(problem.safety_tuple)

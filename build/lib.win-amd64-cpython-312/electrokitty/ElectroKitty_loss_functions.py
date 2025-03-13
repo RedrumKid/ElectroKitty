@@ -414,14 +414,19 @@ class electrokitty_loss():
                                 upper_bound.append(100*temp[count])
                             count += 1
 
-            if info[0] != 0:
+            if info[0] != 0 and info[0] != 3:
                 if info[-1]:
                     lower_bound.append(0)
                     lower_bound.append(10**-4)
                     if guess[info[1]] == 0:
-                        upper_bound.append(1)
+                        if info[0] == 1:
+                            upper_bound.append(1)
+                        elif info[0] == 2 and info[3] == 1:
+                            upper_bound.append(100)
+                        elif info[0] == 2 and info[3] == 2:
+                            upper_bound.append(100)
                     else:
-                        upper_bound.append(100*guess[info[1]+1])
+                        upper_bound.append(100*guess[info[1]])
                     if guess[info[1]+1] == 0:
                         upper_bound.append(1)
                     else:
@@ -429,10 +434,34 @@ class electrokitty_loss():
                 else:
                     lower_bound.append(0)
                     if guess[info[1]] == 0:
+                        if info[0] == 1:
+                            upper_bound.append(1)
+                        elif info[0] == 2 and info[3] == 1:
+                            upper_bound.append(100)
+                        elif info[0] == 2 and info[3] == 2:
+                            upper_bound.append(100)
+                    else:
+                        upper_bound.append(100*guess[info[1]])
+
+            if info[0] == 3:
+                if info[-1]:
+                    lower_bound.append(-25)
+                    lower_bound.append(10**-4)
+                    if guess[info[1]] == 0:
+                        upper_bound.append(10)
+                    else:
+                        upper_bound.append(100*guess[info[1]])
+                    if guess[info[1]+1] == 0:
                         upper_bound.append(1)
                     else:
                         upper_bound.append(100*guess[info[1]+1])
 
+                else:
+                    lower_bound.append(-25)
+                    if guess[info[1]] == 0:
+                        upper_bound.append(10)
+                    else:
+                        upper_bound.append(100*guess[info[1]])
         lower_bound.append(0)
         upper_bound.append(1)
 
