@@ -321,6 +321,7 @@ class python_electrokitty_simulator:
     def __init__(self):
         self.F=96485
         self.R=8.314
+        self.kb = 8.617333262*10**-5
         self.t=None
         self.E_generated=None
         self.current=None
@@ -596,11 +597,37 @@ class python_electrokitty_simulator:
         # it transforms the given constants into function to be evaluated during simulation
         return [lambda E: el_num*k0*np.exp(-alpha*el_num*f*(E-E0)), lambda E:el_num*k0*np.exp((1-alpha)*el_num*f*(E-E0))]
     
+    def _Marcus_Hush_kinetics(self, lamb, k0, E0, T, el_num):
+        print("using MH")
+        def integral(fun, start, end, steps=1000):
+            step_size = (end-start)/steps
+            values = [start + i*step_size for i in range(1, steps+1)]
+            return sum([fun(value)*step_size for value in values])
+
+        def lower_integral(start, stop, lamb):
+            y = lambda epsilon: np.exp(-(epsilon)**2/4/lamb)/2/np.cosh(epsilon/2)
+            return integral(y, start, stop)
+
+        def upper_integral(start, stop, lamb, eta):
+            y = lambda epsilon: np.exp(-(epsilon-eta)**2/4/lamb)/2/np.cosh(epsilon/2)
+            return integral(y, start, stop)
+
+        def calc_kins(lamb, k0, E0, kb, T, num_el,e):
+            eta = num_el/kb/T*(e-E0)
+            lamb *= 1/kb/T
+            LI = lower_integral(-20, 20, lamb)
+            UI = upper_integral(eta-50, eta+50, lamb, eta)
+            return num_el*k0*np.exp(-eta/2)*UI/LI, num_el*k0*np.exp(eta/2)*UI/LI 
+
+        return [lambda E: calc_kins(lamb, k0, E0, self.kb, T, el_num, E)[0], 
+                lambda E: calc_kins(lamb, k0, E0, self.kb, T, el_num, E)[1]]
+    
     def _get_EC_kinetic_constants(self, k_vector, kinetic_types, f, num_el):
         # A function for getting BV kinetics at the boundary condition
         # in case of irreversible kinetics the function is a zero function
         for i in range(len(k_vector)):
-            k_vector[i]=self._Butler_volmer_kinetics(k_vector[i][0], k_vector[i][1], k_vector[i][2], f, num_el[i])
+            #k_vector[i]=self._Butler_volmer_kinetics(k_vector[i][0], k_vector[i][1], k_vector[i][2], f, num_el[i])
+            k_vector[i] = self._Marcus_Hush_kinetics(k_vector[i][0], k_vector[i][1], k_vector[i][2], f, num_el[i])
             if kinetic_types[i]==1:
                 k_vector[i][0]=lambda E: 0
             elif kinetic_types[i]==2: 
@@ -757,7 +784,7 @@ class python_electrokitty_simulator:
 
         ads_const=self._get_kinetic_constants(ads_const, types[0])
         bulk_const=self._get_kinetic_constants(bulk_const, types[1])
-        EC_const=self._get_EC_kinetic_constants(EC_const, types[2], f, num_el)
+        EC_const=self._get_EC_kinetic_constants(EC_const, types[2], T, num_el)
 
         dt=np.average(np.diff(Time))
         
@@ -811,6 +838,7 @@ class python_electrokitty_simulator:
         surface_profile=[]
         concentration_profile=[]
         for tt in range(0,len(Time)):
+            print(tt)
             cp=c
             cp[-2]=Potential_program[tt]
             res=sciop.root(self._time_step, cp, args=(

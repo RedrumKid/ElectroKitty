@@ -7,7 +7,6 @@ Created on Thu Aug 29 14:58:33 2024
 
 import numpy as np
 import multiprocessing
-from cpp_ekitty_simulator import cpp_ekitty_simulator
 
 class electrokitty_sampler():
     """

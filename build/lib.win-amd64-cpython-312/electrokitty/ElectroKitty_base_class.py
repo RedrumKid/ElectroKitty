@@ -749,7 +749,7 @@ class ElectroKitty:
         """
         plt.figure("Fourier_Transform")
         plt.title("Fourier Transform "+Title)
-        plt.plot(self.freq,np.log10(np.abs(self.sp)),label=label)
+        plt.plot(self.freq, np.log10(np.abs(self.sp)),label=label)
         plt.xlabel("frequency [Hz]")
         plt.ylabel("$log_{10}$($I_{FT}$) [dB]")
         
