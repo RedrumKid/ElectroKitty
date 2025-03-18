@@ -13,8 +13,16 @@ from. ElectroKitty_parameter_distributions import gaussian_distribution
 from cpp_ekitty_simulator import cpp_ekitty_simulator
 
 class electrokitty_simulator:
+    """
+    A simulator class that wraps around the C++ implementaion of the Python class
+
+    This simulator uses the C++ simulator to calculate parameter dispersion
+    """
     
     def __init__(self):
+        """
+        A simple initialisation
+        """
         self.i_mean = None
         self.sim_cell_const = None
         self.sim_diffusion_const = None
@@ -42,12 +50,28 @@ class electrokitty_simulator:
         self._simulator = None
     
     def check_type(self, param):
+        """
+        A simple function to check if a parameter is a float or an intiger
+        """
         if type(param) is float or type(param) is int:
             return True
         else:
             return False
     
     def check_for_params(self, some_list):
+        """
+        Given a list this function loops over it and check if a parameter is a float or an intiger.
+
+        This is used to see if the simulator needs to simulate parameter dispersion
+
+        Parameters:
+            - some_list: the list that will be checked
+
+        Returns:
+            - scratch_list: a list of booleans that correspond to the parameters in the list,
+                if True the parameter is either a float or an intiger
+            - dispersion_check: a boolean that indicates whether modeling dispersion is neccessary
+        """
         scratch_list = []
         dispersion_check = False
         for ind in range(len(some_list)):
@@ -59,6 +83,14 @@ class electrokitty_simulator:
         return scratch_list, dispersion_check
     
     def create_disp_lists(self):
+        """
+        A function that will create lists that are used during the simulation of parameter dispersion
+        The lists tell the simulator whether or not the parameter needs to simulated via a distribution that was passed
+
+        Updates:
+            All of the "copied" lists of the simulation parameters that could have dispersed parameters
+            Each parameter in each list is associated with a boolean that determines if it should be simulated with dispersion
+        """
         self.dispersed_cell_const, check = self.check_for_params(self.sim_cell_const)
         if check:
                 self.simulate_with_dispersion = check
@@ -85,7 +117,9 @@ class electrokitty_simulator:
     def give_simulation_constants(self, kins, cell_consts, 
                           Diffusion_consts, isotherms ,Spatial_infos , 
                           Species_informations, spectatorss=False, kinetic_model = "BV"):
-        
+        """
+        A simple function that given the simulation parameters will update the simulation parameters of the simulator class
+        """
         self.sim_cell_const=cell_consts
         self.sim_diffusion_const=Diffusion_consts
         self.sim_isotherm=isotherms
@@ -99,16 +133,38 @@ class electrokitty_simulator:
         self.create_disp_lists()
     
     def give_mechanism_list(self, mechanism_list):
+        """
+        A simple function that will update the mechanism list that contains all kinetic mappings, 
+        given by the parser instance
+        """
         self.sim_mechanism_list = mechanism_list
     
     def give_simulation_program(self, ts, E_gens):
+        """
+        A function to pass the simulation potential and time to the simulator to use
+        """
         self.t = ts
         self.E_gen = E_gens
 
     def give_saved_cons(self):
+        """
+        A redundant function
+        """
         return self.save_kin, self.save_spec_info, self.save_cell_cons, self.save_isotherm
 
     def create_weights(self, fun, x):
+        """
+        This function will given a function and range calculate the weights and new range 
+        based on the mid-point integration rule
+
+        Parameters:
+            - fun: function to be integrated
+            - x: a list of ranges to be integrated
+        
+        Returns:
+            - ws: wheight of the integral
+            - points: points at which to integrate at
+        """
         ws = []
         points = []
         for i in range(1, len(x)):
@@ -117,6 +173,10 @@ class electrokitty_simulator:
         return np.array(ws), np.array(points)
 
     def create_integration_scale(self, xmin, xmax, N):
+        """
+        A function that given the minimum, maximum and the number of points will return 
+        the range from min to max with equally spaced distances inbetween
+        """
         return np.linspace(xmin, xmax, N+1)
 
     def create_dist_simulation_list(self):

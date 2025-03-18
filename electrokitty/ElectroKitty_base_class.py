@@ -106,6 +106,8 @@ class ElectroKitty:
                 a list of lists: surface concentrations, dissolved concentrations
             
             - spectators: not fully implemented, a list of 1 or 0 to use the species or not in the reaction
+
+            - kinetic_model: choose either "BV" or "MH", for Butler-Volmer or Marcus-Hush electrochemical kinetics
         
         """
         def create_copy_tuple(some_list):
@@ -264,6 +266,7 @@ class ElectroKitty:
         function to call the simulator.
         
         Will update the current, E_Corr, surface_profile, concentration_profile and
+
         Returns:
          - E, I, t in this order
         """
@@ -276,7 +279,7 @@ class ElectroKitty:
         
     ####################### Functions for generating potential programs
     
-    def V_potencial(self, Ei,Ef,v,amplitude,frequency,nt):
+    def V_potential(self, Ei,Ef,v,amplitude,frequency,nt):
         """
         Function to generate a potential signal for a CV/ACV simulation
         
@@ -345,10 +348,32 @@ class ElectroKitty:
         elif Ei < Ef:
             self.E_generated=Ei + v*self.t +amplitude*np.sin(2*np.pi*frequency*self.t)
         return self.E_generated,self.t
+    
+    def PS_potential(self, amplitude, frequency, phase, nt, n_repeats = 1):
+        """
+        Function to generate a potential signal for a PSV simulation
+        
+        Parameters:
+            - amplitude: the amplitude of the sine [V]
+            - frequency: the frequency of the sine wave [Hz]
+            - phase: the phase of the sine wave [/]
+            - nt: number of time points
+            - n_repeats: the number of times the sine is repeated
+
+        Returns: 
+            - the potential and time arrays
+
+        !!! The function will override the data potential signal
+        """
+        ts = n_repeats*1/np.pi/2/frequency
+        self.t = np.linspace(0, ts, nt)
+        self.E_generated = amplitude*np.sin(2*np.pi*frequency*self.t + phase)
+        return self.E_generated, self.t
+
     ##################### Fitting to data
     
     
-    def fit_to_data(self,fit_kin = True,  fit_Cdl=False, fit_Ru=False, fit_gamamax=False,
+    def fit_to_data(self, fit_kin = True,  fit_Cdl=False, fit_Ru=False, fit_gamamax=False,
                     fit_A=False, fit_iso=False, eqilibration=False, algorithm="Nelder-Mead",
                     tolf=10**-11, tolx=10**-11, N_disp = 15):
         
@@ -356,6 +381,7 @@ class ElectroKitty:
         Function which tries to fit kinetic parameters and others to current from data
         
         Parameters:
+            - fit_kin: True to fit the kinetic parameters
             - fit_Cdl: True to fit the double layer capacitance
             - fit_Ru: True to fit uncompensated resistance
             - fit_gamamax: True to fit the highest surface concentration in the species_information list
@@ -364,9 +390,9 @@ class ElectroKitty:
             - eqilibration: currently does nothing
             - algorithm: Choose between "Nelder-Mead" and "CMA-ES"
                 the class will automatically create a minimisation problem based on the chosen algorithm
-            
             - tolf: the function value to cutoff, used only in Nelder-Mead
             - tolx: the difference in x for the algorithm to cutoff on, used by both algorithms
+            - N_disp: the number of points to use during integration of parameter distributions
         
         algortim = "CMA-ES raw" is available but should not be used as it performs worse 
         than the one used by the cma package
@@ -417,6 +443,7 @@ class ElectroKitty:
             - base_freq: frequency of the sine wave [Hz]
             - N_harmonics: number of harmonics to use when fitting
             - w: a list of vaules to use in the rectangular function to seperate the harmonics
+            - fit_kin: True to fit kinetic parameters
             - fit_Cdl: True to fit the double layer capacitance
             - fit_Ru: True to fit uncompensated resistance
             - fit_gamamax: True to fit the highest surface concentration in the species_information list
@@ -428,6 +455,7 @@ class ElectroKitty:
             
             - tolf: the function value to cutoff, used only in Nelder-Mead
             - tolx: the difference in x for the algorithm to cutoff on, used by both algorithms
+            - N_disp: the number of points to use during integration of parameter distributions
         
         algortim = "CMA-ES raw" is available but should not be used as it performs worse 
         than the one used by the cma package
@@ -518,6 +546,7 @@ class ElectroKitty:
             - burn_in_per: fraction of samples to be discared when updating the class
             - num_chains: number of chains to be calculated
             - multiprocessing: True in order to perform MCMC on multiple cores
+            - fit_kin: True to fit kinetic parameters
             - fit_Cdl: True to fit the double layer capacitance
             - fit_Ru: True to fit uncompensated resistance
             - fit_gamamax: True to fit the highest surface concentration in the species_information list
@@ -526,6 +555,7 @@ class ElectroKitty:
             - eqilibration: currently does nothing
             - bounds: a list containing a lists of the lower and upper bounds on the parameters,
                 if None the class generates them itself, used as the prior distribution
+            - N_disp: the number of points to use during integration of parameter distributions
             
         """
         
@@ -577,6 +607,7 @@ class ElectroKitty:
 
         Parameters:
             -burn_in: intiger of how much the burn in period lasted, all parameters are computed from that index on
+
         """
         self.update_after_min(np.average(self.mean_chain[int(burn_in):,:-1],axis=0))
         print("updated parameters and resimulated using those")
@@ -585,6 +616,12 @@ class ElectroKitty:
     def print_fitting_parameters(self):
         """
         A function that returns all relevant list that were used when fitting as well as print out the optimal parameters.
+
+        Returns:
+            - the kinetic list
+            - the initial condition list
+            - the cell constants
+            - the isotherm constants
         """
         print("Kinetic list:")
         print_kin_list = []

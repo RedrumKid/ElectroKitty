@@ -50,6 +50,7 @@ class ElectroKitty:
         self.surface_profile=None
         
         self.string=string
+        self.kinetic_model = "BV"
         
         self.cell_const=None
         self.diffusion_const=None
@@ -84,7 +85,7 @@ class ElectroKitty:
     
     def create_simulation(self, kin, cell_const, 
                           Diffusion_const, isotherm,Spatial_info, 
-                          Species_information, spectators=False):
+                          Species_information, spectators=False, kinetic_model = "BV"):
         """
         Give the simulator all required parameters for simulation
         
@@ -122,7 +123,7 @@ class ElectroKitty:
         self.spatial_info=Spatial_info
         self.species_information=tuple(Species_information)
         self.kin=tuple(kin)
-
+        self.kinetic_model = kinetic_model
         self.safety_tuple = (create_copy_tuple(kin), create_copy_tuple(Species_information), tuple(cell_const), tuple(isotherm))
 
         spectators = [np.ones(len(Species_information[0])),np.ones(len(Species_information[1]))]
@@ -131,7 +132,7 @@ class ElectroKitty:
         
         self.simulator.give_simulation_constants(self.kin, self.cell_const, 
                                                  self.diffusion_const, self.isotherm, 
-                                                 self.spatial_info, self.species_information)
+                                                 self.spatial_info, self.species_information, kinetic_model=self.kinetic_model)
         
         self.simulator.give_mechanism_list(self.mechanism_list)
 	
@@ -749,7 +750,7 @@ class ElectroKitty:
         """
         plt.figure("Fourier_Transform")
         plt.title("Fourier Transform "+Title)
-        plt.plot(self.freq,np.log10(np.abs(self.sp)),label=label)
+        plt.plot(self.freq, np.log10(np.abs(self.sp)),label=label)
         plt.xlabel("frequency [Hz]")
         plt.ylabel("$log_{10}$($I_{FT}$) [dB]")
         
