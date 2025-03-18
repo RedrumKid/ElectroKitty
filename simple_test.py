@@ -4,41 +4,59 @@ from electrokitty.ElectroKitty_simulator import python_electrokitty_simulator as
 import numpy as np
 import matplotlib.pyplot as plt
 
-mechanism = "E(1): a*=c*"
+mechanism = "E(1): a=c \n E(1): c = d"
 
 mu = 0.15
 sigma = 0.1
 
-kins = [[0.5, 10, 0]]
+kins = [[0.5, 10, 0.15], [0.5, 10, -0.15]]
 
-D = []
+D = [10**0, 10**0, 10**0]
 
 ic = [
-      [0,10**-5],
-      []
+      [],
+      [0, 0, 100]
       ]
 
-iso = [0,0]
+iso = []
 
 cc = [293, 0, 0, 10**-4]
 
-si = [0.0001, 20, 10**-5, 0]
+si = [0.0001, 20, 10**-5, 60]
 
 problem1 = ElectroKitty(mechanism)
 
 #problem1.set_data(E, np.zeros(len(E)), t)
-problem1.create_simulation(kins, cc, D, iso, si, ic)
-problem1.V_potencial(-0.5, 0.5, 0.1, 0., 0, 200)
+problem1.create_simulation(kins, cc, D, iso, si, ic, kinetic_model="BV")
+problem1.LSV_potential(-0.5, 0.5, 0.01, 0., 0, 100)
 
-sim = ps()
+""" sim = ps()
 sim.give_sim_program(problem1.E_generated, problem1.t)
-sim.update_parameters(problem1.mechanism_list, kins, cc, D, iso, si, ic)
-i = sim.simulate()
+sim.update_parameters(problem1.mechanism_list, kins, cc, D, iso, si, ic, kinetic_model="MH")
+i = sim.simulate() """
 #print(i)
-plt.plot(i[1])
-plt.show()
+#plt.plot(problem1.E_generated, i[1])
 
-#ed, id, td = problem1.simulate()
+ed, id, td = problem1.simulate()
+
+plt.plot(ed, id)
+#plt.show()
+kins = [[0.05, 10, 0.15], [0.05, 10, -0.15]]
+
+problem1.create_simulation(kins, cc, D, iso, si, ic, kinetic_model="MH")
+problem1.LSV_potential(-0.5, 0.5, 0.01, 0., 0, 100)
+
+""" sim = ps()
+sim.give_sim_program(problem1.E_generated, problem1.t)
+sim.update_parameters(problem1.mechanism_list, kins, cc, D, iso, si, ic, kinetic_model="MH")
+i = sim.simulate() """
+#print(i)
+#plt.plot(problem1.E_generated, i[1])
+
+ed, id, td = problem1.simulate()
+
+plt.plot(ed, id)
+plt.show()
 #problem1.Plot_simulation()
 
 #problem1.Plot_concentration_profile()

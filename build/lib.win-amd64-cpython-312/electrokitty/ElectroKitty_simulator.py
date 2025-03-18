@@ -28,6 +28,7 @@ class electrokitty_simulator:
         self.dispersed_cell_const = None
         self.dispersed_isotherm = None
         self.dispersed_kin = None
+        self.kinetic_model = "BV"
 
         self.tells = None
         self.gamapos = None
@@ -83,7 +84,7 @@ class electrokitty_simulator:
     
     def give_simulation_constants(self, kins, cell_consts, 
                           Diffusion_consts, isotherms ,Spatial_infos , 
-                          Species_informations, spectatorss=False):
+                          Species_informations, spectatorss=False, kinetic_model = "BV"):
         
         self.sim_cell_const=cell_consts
         self.sim_diffusion_const=Diffusion_consts
@@ -94,7 +95,7 @@ class electrokitty_simulator:
         self.sim_kin=kins
         spectators = [np.ones(len(Species_informations[0])),np.ones(len(Species_informations[1]))]
         self.sim_spectators = spectators
-
+        self.kinetic_model = kinetic_model
         self.create_disp_lists()
     
     def give_mechanism_list(self, mechanism_list):
@@ -204,7 +205,7 @@ class electrokitty_simulator:
                                 cell_const, self.sim_diffusion_const, iso, self.sim_spectators, 
                                 self.sim_spatial_info, species_info, kin, 
                                 self.sim_mechanism_list[0], self.sim_mechanism_list[1], 
-                                self.sim_mechanism_list[2], self.sim_mechanism_list[3], self.sim_mechanism_list[4]
+                                self.sim_mechanism_list[2], self.sim_mechanism_list[3], self.sim_mechanism_list[4], self.kinetic_model
                                 )
 
             self.simulator.set_simulation_programm(self.t, self.E_gen)
@@ -300,7 +301,7 @@ class electrokitty_simulator:
                                 self.sim_cell_const, self.sim_diffusion_const, self.sim_isotherm, self.sim_spectators, 
                                 self.sim_spatial_info, self.sim_species_information, self.sim_kin, 
                                 self.sim_mechanism_list[0], self.sim_mechanism_list[1], 
-                                self.sim_mechanism_list[2], self.sim_mechanism_list[3], self.sim_mechanism_list[4]
+                                self.sim_mechanism_list[2], self.sim_mechanism_list[3], self.sim_mechanism_list[4], self.kinetic_model
                                 )
 
             self.simulator.set_simulation_programm(self.t, self.E_gen)
@@ -335,6 +336,7 @@ class python_electrokitty_simulator:
         self.spatial_info=None
         self.species_information=None
         self.kin=None
+        self.kinetic_model = "BV"
         
         self.x=None
         self.number_of_diss_spec=None
@@ -346,7 +348,7 @@ class python_electrokitty_simulator:
     
     def update_parameters(self, mechanism_list, kin, cell_const, 
                           Diffusion_const, isotherm,Spatial_info, 
-                          Species_information, spectators=False):
+                          Species_information, spectators=False, kinetic_model = "BV"):
         
         self.cell_const=cell_const
         self.diffusion_const=Diffusion_const
@@ -355,8 +357,9 @@ class python_electrokitty_simulator:
         self.spatial_info=Spatial_info
         self.species_information=Species_information
         self.kin=kin
-        
+        self.kinetic_model = kinetic_model
         self.mechanism_list=mechanism_list
+
     def give_sim_program(self, E, t):
         self.E_generated=E
         self.t=t
@@ -598,8 +601,8 @@ class python_electrokitty_simulator:
         return [lambda E: el_num*k0*np.exp(-alpha*el_num*f*(E-E0)), lambda E:el_num*k0*np.exp((1-alpha)*el_num*f*(E-E0))]
     
     def _Marcus_Hush_kinetics(self, lamb, k0, E0, T, el_num):
-        print("using MH")
-        def integral(fun, start, end, steps=1000):
+        
+        def integral(fun, start, end, steps=100):
             step_size = (end-start)/steps
             values = [start + i*step_size for i in range(1, steps+1)]
             return sum([fun(value)*step_size for value in values])
@@ -612,22 +615,26 @@ class python_electrokitty_simulator:
             y = lambda epsilon: np.exp(-(epsilon-eta)**2/4/lamb)/2/np.cosh(epsilon/2)
             return integral(y, start, stop)
 
-        def calc_kins(lamb, k0, E0, kb, T, num_el,e):
+        def calc_kins(lamb, k0, E0, kb, T, num_el, li, e):
             eta = num_el/kb/T*(e-E0)
             lamb *= 1/kb/T
-            LI = lower_integral(-20, 20, lamb)
-            UI = upper_integral(eta-50, eta+50, lamb, eta)
-            return num_el*k0*np.exp(-eta/2)*UI/LI, num_el*k0*np.exp(eta/2)*UI/LI 
+            UI = upper_integral(eta-20, eta+20, lamb, eta)
+            
+            return num_el*k0*np.exp(-eta/2)*UI/li, num_el*k0*np.exp(eta/2)*UI/li
+        
+        LI = lower_integral(-20, 20, lamb/self.kb/T)
 
-        return [lambda E: calc_kins(lamb, k0, E0, self.kb, T, el_num, E)[0], 
-                lambda E: calc_kins(lamb, k0, E0, self.kb, T, el_num, E)[1]]
+        return [lambda E: calc_kins(lamb, k0, E0, self.kb, T, el_num, LI, E)[0], 
+                lambda E: calc_kins(lamb, k0, E0, self.kb, T, el_num, LI, E)[1]]
     
-    def _get_EC_kinetic_constants(self, k_vector, kinetic_types, f, num_el):
+    def _get_EC_kinetic_constants(self, k_vector, kinetic_types, f, num_el, type):
         # A function for getting BV kinetics at the boundary condition
         # in case of irreversible kinetics the function is a zero function
         for i in range(len(k_vector)):
-            #k_vector[i]=self._Butler_volmer_kinetics(k_vector[i][0], k_vector[i][1], k_vector[i][2], f, num_el[i])
-            k_vector[i] = self._Marcus_Hush_kinetics(k_vector[i][0], k_vector[i][1], k_vector[i][2], f, num_el[i])
+            if type == "BV":
+                k_vector[i]=self._Butler_volmer_kinetics(k_vector[i][0], k_vector[i][1], k_vector[i][2], f, num_el[i])
+            elif type == "MH":
+                k_vector[i] = self._Marcus_Hush_kinetics(k_vector[i][0], k_vector[i][1], k_vector[i][2], f, num_el[i])
             if kinetic_types[i]==1:
                 k_vector[i][0]=lambda E: 0
             elif kinetic_types[i]==2: 
@@ -784,7 +791,10 @@ class python_electrokitty_simulator:
 
         ads_const=self._get_kinetic_constants(ads_const, types[0])
         bulk_const=self._get_kinetic_constants(bulk_const, types[1])
-        EC_const=self._get_EC_kinetic_constants(EC_const, types[2], T, num_el)
+        if self.kinetic_model == "BV":
+            EC_const=self._get_EC_kinetic_constants(EC_const, types[2], f, num_el, "BV")
+        elif self.kinetic_model == "MH":
+            EC_const=self._get_EC_kinetic_constants(EC_const, types[2], T, num_el, "MH")
 
         dt=np.average(np.diff(Time))
         
@@ -838,7 +848,6 @@ class python_electrokitty_simulator:
         surface_profile=[]
         concentration_profile=[]
         for tt in range(0,len(Time)):
-            print(tt)
             cp=c
             cp[-2]=Potential_program[tt]
             res=sciop.root(self._time_step, cp, args=(

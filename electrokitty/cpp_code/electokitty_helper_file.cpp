@@ -26,18 +26,29 @@ struct Fit_Params{
 struct EC_kinetics{
     double F = 96485.3321;
     double R = 8.314;
+    double kb = 8.617333262e-5;
+    double kT;
     double T;
     double f;
-    vector<vector<double>> BV_const;
+    string kinetic_model;
+    vector<vector<double>> kin_const;
     vector<double> el_nums;
+    vector<double> LUs;
     vector<vector<double>> irreversible_types;
 
     void set_EC_constants(double Temp, vector<vector<double>> consts, 
-    vector<double> els, vector<int> kinetic_types) {
+    vector<double> els, vector<int> kinetic_types, string kin_model) {
         T = Temp;
-        BV_const = consts;
+        kin_const = consts;
         f = F/R/T;
+        kT = 1/kb/T;
         el_nums = els;
+        kinetic_model = kin_model;
+        if (kinetic_model == "MH"){
+          for (int i = 0; i<int(consts.size()); i++){
+            LUs.push_back(trap(-30., 30., 100, 0., kin_const[i][0]*kT));
+          }
+        }
         vector<double> step_types(2);
         for (int i = 0; i<int(consts.size()); i++){
             step_types[0] = 1.;
@@ -51,10 +62,33 @@ struct EC_kinetics{
         }
     }
 
+    double integration_fun(double x, double eta, double lambd){
+      return exp(-pow(x-eta,2)/4./lambd)/2./cosh(x/2.);
+    }
+  
+    double trap(double a, double b, int n, double eta, double lambd){
+      double h = (b-a)/(n-1);
+      double value = 0.5*(integration_fun(a, eta, lambd) + integration_fun(b, eta, lambd));
+      for (int i = 2; i < n; i++){
+          value += integration_fun(a + h*(i-1), eta, lambd);
+      }
+      value *= h;
+      return value;
+      }
+
     vector<double> calc_kinetics(double E, int i){
         vector<double> ks(2);
-        ks[0] = irreversible_types[i][0]*BV_const[i][1]*exp(-BV_const[i][0]*el_nums[i]*f*(E-BV_const[i][2]));
-        ks[1] = irreversible_types[i][1]*BV_const[i][1]*exp((1-BV_const[i][0])*el_nums[i]*f*(E-BV_const[i][2]));
+        if (kinetic_model == "BV"){
+          ks[0] = irreversible_types[i][0]*kin_const[i][1]*el_nums[i]*exp(-kin_const[i][0]*el_nums[i]*f*(E-kin_const[i][2]));
+          ks[1] = irreversible_types[i][1]*kin_const[i][1]*el_nums[i]*exp((1-kin_const[i][0])*el_nums[i]*f*(E-kin_const[i][2]));
+
+        }else if (kinetic_model == "MH"){
+          double eta = kT*el_nums[i]*(E - kin_const[i][2]);
+          double UI = trap(-20. + eta, 20. + eta, 100, eta, kin_const[i][0]*kT);
+          ks[0] = irreversible_types[i][0]*kin_const[i][1]*UI/LUs[i]*el_nums[i]*exp(-eta/2.) ;
+          ks[1] = irreversible_types[i][1]*kin_const[i][1]*UI/LUs[i]*el_nums[i]*exp(eta/2.) ;
+        }
+       
         return ks;
     }
 };
@@ -81,13 +115,14 @@ struct Params{
         vector<vector<vector<vector<int>>>> index;
         vector<double> isotherm;
         vector<double> spectator;
+        string kinetic_model;
 
         EC_kinetics ec_kin_consts;
 
         void set_params(int nnx, double ddt, int nn1, int nn,
         vector<vector<double>> bbound1, vector<double> bbound2, vector<vector<vector<double>>> aa,
         vector<double> nnull, vector<vector<vector<double>>> cconstants, vector<vector<vector<vector<int>>>> iindex,
-        vector<double> iisotherm_constants, vector<double> sspectator, double eq, vector<double> cell_cs){
+        vector<double> iisotherm_constants, vector<double> sspectator, double eq, vector<double> cell_cs, string kin_model){
                 nx = nnx;
                 dt = ddt;
                 n_ads = nn1;
@@ -104,11 +139,11 @@ struct Params{
                 Cdl = cell_cs[2];
                 A = cell_cs[3];
                 eqilib = eq;
-
+                kinetic_model = kin_model;
         }
 
         void set_ec_params(double Temp, vector<double> els, vector<int> kinetic_types){
-                ec_kin_consts.set_EC_constants(Temp, constants[2], els, kinetic_types);
+                ec_kin_consts.set_EC_constants(Temp, constants[2], els, kinetic_types, kinetic_model);
         }
 
         void update_time_step(double nomp, vector<double> xp, double dE){

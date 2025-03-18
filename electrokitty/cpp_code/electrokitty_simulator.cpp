@@ -74,6 +74,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
         vector<int> tells;
         int gammaposition;
         Fit_Params fit_params;
+        string kinetic_model = "BV";
 
 // ######## funkcije
         Electrokitty_simulator(){
@@ -95,7 +96,8 @@ The vectors are the same as with Python, except mechanism list, this one is chop
         vector<vector<vector<vector<int>>>> sindex,
         vector<vector<int>> stypes,
         vector<vector<int>> sr_ind,
-        vector<double> snum_el){
+        vector<double> snum_el,
+        string kin_model){
                 /*This function set the class constants, updates the spectarot list, still WIP*/
                 cell_const = scell_const;
                 diffusion_const = sdiffusion_const;
@@ -113,6 +115,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 types = stypes;
                 r_ind = sr_ind;
                 num_el = snum_el;
+                kinetic_model = kin_model;
         }
 
         void set_sim_prog(vector<double> Time, vector<double> E){
@@ -281,11 +284,13 @@ The vectors are the same as with Python, except mechanism list, this one is chop
 
                 if (eqilibration == 0){
                         params.set_params(int(spatial_info[1]), dt, number_of_surf_conf, number_of_diss_spec, 
-                        bound1, bound2, a, null, various_constants, index, isotherm_cons_burner, spectators, 1., cell_const);
+                        bound1, bound2, a, null, various_constants, index, isotherm_cons_burner, 
+                        spectators, 1., cell_const, kinetic_model);
                         params.set_ec_params(cell_const[0], num_el, types[2]);
                 }else{
                         params.set_params(int(spatial_info[1]), dt, number_of_surf_conf, number_of_diss_spec, 
-                        bound1, bound2, a, null, various_constants, index, isotherm_cons_burner, spectators, 0., cell_const);
+                        bound1, bound2, a, null, various_constants, index, isotherm_cons_burner, 
+                        spectators, 0., cell_const, kinetic_model);
                         params.set_ec_params(cell_const[0], num_el, types[2]);
                 }
                 
