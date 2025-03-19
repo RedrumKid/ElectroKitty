@@ -74,6 +74,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
         vector<int> tells;
         int gammaposition;
         Fit_Params fit_params;
+        string kinetic_model = "BV";
 
 // ######## funkcije
         Electrokitty_simulator(){
@@ -95,7 +96,8 @@ The vectors are the same as with Python, except mechanism list, this one is chop
         vector<vector<vector<vector<int>>>> sindex,
         vector<vector<int>> stypes,
         vector<vector<int>> sr_ind,
-        vector<double> snum_el){
+        vector<double> snum_el,
+        string kin_model){
                 /*This function set the class constants, updates the spectarot list, still WIP*/
                 cell_const = scell_const;
                 diffusion_const = sdiffusion_const;
@@ -113,6 +115,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 types = stypes;
                 r_ind = sr_ind;
                 num_el = snum_el;
+                kinetic_model = kin_model;
         }
 
         void set_sim_prog(vector<double> Time, vector<double> E){
@@ -133,30 +136,6 @@ The vectors are the same as with Python, except mechanism list, this one is chop
 
                 simulator_main_loop(
                         spec, index, types, r_ind, num_el, kin, cons,spatial_information, t, species_information,
-                        E_generated, 0);
-                cons.clear();
-                return current;
-        }
-
-        void create_optimization_problem(vector<int> ttells, int gampos){
-                tells = ttells;
-                gammaposition = gampos;
-        }
-
-        vector<double> calc_from_guess(vector<double> guess){
-                current.clear();
-                E_Corr.clear();
-                surface_profile.clear();
-                concentration_profile.clear();
-                Fit_Params fparams = unpack_fit_params(guess, tells, gammaposition);
-
-                cons.push_back(fparams.cell_params);
-                cons.push_back(diffusion_const);
-                cons.push_back(fparams.isotherm);
-                cons.push_back(spectators);
-
-                simulator_main_loop(
-                        spec, index, types, r_ind, num_el, fparams.kinetics, cons,spatial_information, t, fparams.spec_info,
                         E_generated, 0);
                 cons.clear();
                 return current;
@@ -305,11 +284,13 @@ The vectors are the same as with Python, except mechanism list, this one is chop
 
                 if (eqilibration == 0){
                         params.set_params(int(spatial_info[1]), dt, number_of_surf_conf, number_of_diss_spec, 
-                        bound1, bound2, a, null, various_constants, index, isotherm_cons_burner, spectators, 1., cell_const);
+                        bound1, bound2, a, null, various_constants, index, isotherm_cons_burner, 
+                        spectators, 1., cell_const, kinetic_model);
                         params.set_ec_params(cell_const[0], num_el, types[2]);
                 }else{
                         params.set_params(int(spatial_info[1]), dt, number_of_surf_conf, number_of_diss_spec, 
-                        bound1, bound2, a, null, various_constants, index, isotherm_cons_burner, spectators, 0., cell_const);
+                        bound1, bound2, a, null, various_constants, index, isotherm_cons_burner, 
+                        spectators, 0., cell_const, kinetic_model);
                         params.set_ec_params(cell_const[0], num_el, types[2]);
                 }
                 
@@ -332,56 +313,6 @@ The vectors are the same as with Python, except mechanism list, this one is chop
 private:
         Params params;
         int nx;
-
-        Fit_Params unpack_fit_params(vector<double> gues, vector<int> tell, int gama_pos){
-                Fit_Params fparams;
-                vector<vector<double>> kinetics;
-                vector<double> cell_params;
-                vector<vector<double>> spec_info;
-                vector<double> isot;
-                int index1 = 0;
-                int index2;
-
-                cell_params.push_back(cell_const[0]);
-                spec_info = species_information;
-
-                for (int i = 0; i<tell[0]; i++){
-                        index2 = tell[i+1];
-                        kinetics.push_back(vslice(gues, index1, index2));
-                        index1 = index2;
-                }
-
-                if (tell[tell[0]+1] != 0){
-                        cell_params.push_back(gues[tell[tell[0]+1]]); //Ru
-                }else{
-                        cell_params.push_back(cell_const[1]);
-                }
-
-                if (tell[tell[0]+2] != 0){
-                        cell_params.push_back(gues[tell[tell[0]+2]]); //Cdl
-                }else{
-                        cell_params.push_back(cell_const[2]);
-                }
-
-                if (tell[tell[0]+3] != 0){
-                        cell_params.push_back(gues[tell[tell[0]+3]]); //A
-                }else{
-                        cell_params.push_back(cell_const[3]);
-                }
-
-                if (tell[tell[0]+4] != 0){
-                        spec_info[0][gama_pos] = gues[tell[tell[0]+4]];
-                }
-
-                if (tell[tell[0]+5] != 0){
-                        isot = vslice(gues, tell[tell[0]+5], int(gues.size()));
-                }else{
-                        isot = isotherm;
-                }
-
-                fparams.insert_params(kinetics, cell_params, spec_info, isot);
-                return fparams;
-        }
         
 //functions to call
         vector<vector<double>> get_kinetic_constants(vector<vector<double>> k_vector, vector<int> kinetic_types){
@@ -596,8 +527,8 @@ private:
                 ga = params.A*F*params.calc_current(2, bound_slice, x[n-2]);
 
                 f[n-2] = params.pnom - x[n-2] - params.Ru*ga - params.Ru*x[n-1];
-                f[n-1] = (1+params.Ru*params.Cdl/params.dt)*x[n-1] - params.Cdl*params.delta
-                         - params.Ru*params.Cdl*params.cp[n-1]/params.dt; 
+                f[n-1] = (1+params.A*params.Ru*params.Cdl/params.dt)*x[n-1] - params.A*params.Cdl*params.delta
+                         - params.Ru*params.A*params.Cdl*params.cp[n-1]/params.dt; 
                 
         }
 };
@@ -607,7 +538,6 @@ PYBIND11_MODULE(cpp_ekitty_simulator, m){
     .def(py::init())
     .def("set_parameters", &Electrokitty_simulator::set_params)
     .def("set_simulation_programm", &Electrokitty_simulator::set_sim_prog)
-    .def("create_optimization_problem", &Electrokitty_simulator::create_optimization_problem)
     .def("simulator_main_loop", &Electrokitty_simulator::simulator_main_loop)
     .def("give_current", [](Electrokitty_simulator &self){
         py::array current = py::cast(self.give_current());
@@ -629,14 +559,19 @@ PYBIND11_MODULE(cpp_ekitty_simulator, m){
         py::array i_sim = py::cast(self.simulate());
         return i_sim; 
     })
-    .def("calc_from_guess", [](Electrokitty_simulator &self, vector<double> guess){
-        py::array i_sim = py::cast(self.calc_from_guess(guess));
-        return i_sim;
-    })
     .def_readwrite("current", &Electrokitty_simulator::current)
     .def_readwrite("t", &Electrokitty_simulator::t)
     .def_readwrite("E_generated", &Electrokitty_simulator::E_generated)
     .def_readwrite("concentration_profile", &Electrokitty_simulator::concentration_profile)
     .def_readwrite("surface_profile", &Electrokitty_simulator::surface_profile)
+    /* .def(py::pickle(
+        [](const Electrokitty_simulator &p){
+                return py::make_tuple(p.R(), p.F(), p.Pi());
+        },
+        [](py::tuple t){
+                Electrokitty_simulator p(t[0].cast<std::double>(), t[1].cast<std::double>(), t[2].cast<std::double>());
+                return p;
+        }
+    )) */
     ;
 }

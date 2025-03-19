@@ -22,7 +22,7 @@ Install those and the rest is taken care of.
 ## Getting started
 
 To get started with ElectroKitty checkout the tutorials found in the tutorial folder.
-There you will find 6 tutorials of which 5 cover the more basic utilities of ElectroKitty, while 
+There you will find 7 tutorials of which 6 cover the more basic utilities of ElectroKitty, while 
 the 6th tutorial covers some more advanced ideas. 
 
 The documentation for ElectroKitty can be found at: https://electrokitty.readthedocs.io/en/latest/.
