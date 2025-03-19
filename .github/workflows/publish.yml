@@ -33,7 +33,7 @@ jobs:
       run: >-
         python3 -m
         pip install
-        setuptools pybind11
+        setuptools pybind11 twine
         --user
     - name: Build a binary wheel and a source tarball
       run: python3 -m setup.py sdist
