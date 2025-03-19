@@ -180,6 +180,17 @@ class electrokitty_simulator:
         return np.linspace(xmin, xmax, N+1)
 
     def create_dist_simulation_list(self):
+        """
+        A function that will check the lists for which parameter in the sim list is dispersed and note 
+        the indecies of the parameters in the original list. It will save as intiger to denoste the parameter type
+        and a list of indicies to remap the dispersion variable inside.
+        This function will also create the integration wheights and parameters for integration.
+
+        Returns:
+            - simulation_list: list of parameter indicies to simulate dispersion for
+            - ws: the list of integration wheights
+            - xs: the list of integration points
+        """
         # 0-kin; 1-spec_info; 2-cell_const; 3-iso
         simulation_list = []
         ws = []
@@ -233,6 +244,17 @@ class electrokitty_simulator:
         return simulation_list, ws, xs
 
     def simulate_dispersion(self):
+        """
+        A function that is invoked if it is found that a parameter must be simulated with dispersion.
+        The function will invoke others to create the integration domain and integrate over those to 
+        produce a mean current.
+
+        Returns:
+            - mean_i: the mean current
+            - mean_E_Corr: the mean corrected potential
+            - mean_concentration_profile: the concentration profile averaged
+            - mean_adsorbed_species: the averaged surface concentrations
+        """
         simulation_list, ws, xs = self.create_dist_simulation_list()
 
         mean_i = 0
@@ -283,10 +305,28 @@ class electrokitty_simulator:
         return mean_i, mean_E_corr, mean_adsorbed_spec, mean_conc_prof
     
     def import_for_fitting(self, tells, gama_position):
+        """
+        A function that is a prerequisite for fitting. 
+        It updates the tells and gama_position for remapping the guess given by a optimisation algorithm
+
+        Parameters:
+            - tells: the tells list that tells how to remap the guess
+            - gama_position: a list containing supporting deatails for remapping
+        """
         self.tells = tells
         self.gamapos = gama_position
 
     def calc_from_guess(self, guess):
+        """
+        A function that given a list of parameters will remap them and run the simulator to create a simulation
+        based on that list. Prerequisite is that the talls and gama_position are already imported
+
+        Parameters:
+            - guess: the list of parameters
+
+        Returns:
+            - i_sim: the simulated current based on those parameters
+        """
         self.sim_kin, self.sim_cell_const, self.sim_species_information, self.sim_isotherm = self.unpack_fit_params(guess, self.tells, self.gamapos,
                                                                                                     self.sim_kin, self.sim_species_information, 
                                                                                                     self.sim_cell_const, self.sim_isotherm)
@@ -296,7 +336,8 @@ class electrokitty_simulator:
     
     def unpack_fit_params(self, guess, tells, gamma_position, kins, species_informations, cell_consts, isotherms):
         """
-        Function takes the guess, tells and gammma_position to reconstruct the lists for the simulator
+        Function takes the guess, tells and gammma_position to reconstruct the lists for the simulator.
+        Check the loss_function class for more details
         """
         guess=guess.tolist()
         kinetics=list(kins)
@@ -351,6 +392,18 @@ class electrokitty_simulator:
 
 
     def simulate(self):
+        """
+        A function that when invoked will simulate the current, felt potential, concentration profile and 
+        surface concentration profile. It will check whether or not it needs to simulate with a dispersion model 
+        and choose correctly.
+        All parameters must be loaded before this is invoked
+
+        Returns:
+            - current: the simulated current
+            - E_Corr: the potential with IR drop (the "felt" potential)
+            - surface_profile: the potential dependant surface concentrations
+            - concentration_profile: the potential dependand concentration profile
+        """
 
         if self.simulate_with_dispersion:
             current, E_Corr, surface_profile, concentration_profile = self.simulate_dispersion()
@@ -463,9 +516,9 @@ class python_electrokitty_simulator:
         return k_matrix
      
     def calc_kinetics(self, reac_type,c,index,kinetic_const, isotherm):
-        # A function that given the reaction type 0-ads, 1- bulk 
-        # the relevant concentrations, indexes connecting the c and constants, 
-        # evaluates the reaction forward and backward kinetic rate
+        """A function that given the reaction type 0-ads, 1- bulk 
+         the relevant concentrations, indexes connecting the c and constants, 
+         evaluates the reaction forward and backward kinetic rate """
         k_matrix=np.zeros(len(c))
     
         for i in range(len(index[reac_type])):
@@ -485,9 +538,9 @@ class python_electrokitty_simulator:
         return k_matrix
 
     def _calc_EC_kinetics(self, reac_type, c, index, kinetic_const, E, isotherm):
-        # A function that given the reaction type 0-ads, 1- bulk 
-        # the relevant concentrations, indexes connecting the c and constants, 
-        # evaluates the reaction forward and backward electrochemical kinetic rate at the boundary
+        """A function that given the reaction type 0-ads, 1- bulk 
+         the relevant concentrations, indexes connecting the c and constants, 
+         evaluates the reaction forward and backward electrochemical kinetic rate at the boundary """
         k_matrix=np.zeros(len(c))
     
         for i in range(len(index[reac_type])):
@@ -507,10 +560,10 @@ class python_electrokitty_simulator:
         return k_matrix
 
     def _calc_current(self, reac_type, c, index, kinetic_const, E, isotherm):
-        # A function that given the reaction type 0-ads, 1- bulk 
-        # the relevant concentrations, indexes connecting the c and constants, 
-        # evaluates the reaction forward and backward electrochemical current
-        # the output must be multiplied with n*F*A
+        """A function that given the reaction type 0-ads, 1- bulk 
+         the relevant concentrations, indexes connecting the c and constants, 
+         evaluates the reaction forward and backward electrochemical current
+         the output must be multiplied with n*F*A """
         current=0
     
         for i in range(len(index[reac_type])):
@@ -524,8 +577,8 @@ class python_electrokitty_simulator:
         return current
     
     def _find_gama(self, dx,xmax,nx):
-        # bisection method for finding gama
-        # used in determining the exponential spatial grid
+        """bisection method for finding gama
+        used in determining the exponential spatial grid """
         a=1
         b=2
         for it in range(0,50):
@@ -544,19 +597,21 @@ class python_electrokitty_simulator:
         return gama
     
     def _Fornberg_weights(self, z,x,n,m):
-    # From Bengt Fornbergs (1998) SIAM Review paper.
-    #  	Input Parameters
-    #	z location where approximations are to be accurate,
-    #	x(0:nd) grid point locations, found in x(0:n)
-    #	n one less than total number of grid points; n must
-    #	not exceed the parameter nd below,
-    #	nd dimension of x- and c-arrays in calling program
-    #	x(0:nd) and c(0:nd,0:m), respectively,
-    #	m highest derivative for which weights are sought,
-    #	Output Parameter
-    #	c(0:nd,0:m) weights at grid locations x(0:n) for derivatives
-    #	of order 0:m, found in c(0:n,0:m)
-    #      	dimension x(0:nd),c(0:nd,0:m)
+        """
+        From Bengt Fornbergs (1998) SIAM Review paper.
+        Input Parameters
+        z location where approximations are to be accurate,
+        x(0:nd) grid point locations, found in x(0:n)
+        n one less than total number of grid points; n must
+        not exceed the parameter nd below,
+        nd dimension of x- and c-arrays in calling program
+        x(0:nd) and c(0:nd,0:m), respectively,
+        m highest derivative for which weights are sought,
+        Output Parameter
+        c(0:nd,0:m) weights at grid locations x(0:n) for derivatives
+        of order 0:m, found in c(0:n,0:m)
+        dimension x(0:nd),c(0:nd,0:m)
+        """
         
         c=np.zeros((n+1,m+1))
         c1=1
@@ -588,10 +643,10 @@ class python_electrokitty_simulator:
         return c
     
     def _Space_ranges(self, tmax,f,D,fraction,nx):
-        # Given the simulation time, f, the maximum diffusion coefficient, the initial dx
-        # and the lenghth of spatial direction
-        # evaluates a one dimensional grid to be used in simulation
-        # fraction is given as dx/xmax
+        """ Given the simulation time, f, the maximum diffusion coefficient, the initial dx
+        and the lenghth of spatial direction
+        evaluates a one dimensional grid to be used in simulation
+        fraction is given as dx/xmax """
         xmax=6*np.sqrt(tmax*D)
         dx=fraction*xmax
         gama=self._find_gama(dx, xmax, nx)
@@ -600,10 +655,10 @@ class python_electrokitty_simulator:
         return self.x
     
     def _calc_main_coef(self, x,dt,D,nx,B):
-        # calculate alfas and a's used in simulation
-        # calculated with given spatial direction x
-        # the weights are given via the method of finite difference implicit method
-        # B is to be implemented
+        """calculate alfas and a's used in simulation
+        calculated with given spatial direction x
+        the weights are given via the method of finite difference implicit method
+        """
         a1=[]
         a2=[]
         a3=[]
@@ -631,9 +686,9 @@ class python_electrokitty_simulator:
         return np.array([np.array(a1),np.array(a2),np.array(a3),np.array(a4)])
 
     def _calc_boundary_condition(self, x,i,D,nx,B):
-        # A function for evaluation of the flux boundary condition, at either boundary
-        # i should be 0 or -1, 0 for the electrode, -1 for the bulk limit
-        # B is used in case of rotation (to be implemented)
+        """A function for evaluation of the flux boundary condition, at either boundary
+        i should be 0 or -1, 0 for the electrode, -1 for the bulk limit
+        B is used in case of rotation """
         a1=[]
         a2=[]
         a3=[]
@@ -656,8 +711,10 @@ class python_electrokitty_simulator:
         return np.array([np.array(a1),np.array(a2),np.array(a3)])
     
     def _Butler_volmer_kinetics(self, alpha, k0, E0, f, el_num):
-        # A function for evaluating the butler-volmer kinetics 
-        # it transforms the given constants into function to be evaluated during simulation
+        """
+        A function for evaluating the butler-volmer kinetics 
+        it transforms the given constants into function to be evaluated during simulation
+        """
         return [lambda E: el_num*k0*np.exp(-alpha*el_num*f*(E-E0)), lambda E:el_num*k0*np.exp((1-alpha)*el_num*f*(E-E0))]
     
     def _Marcus_Hush_kinetics(self, lamb, k0, E0, T, el_num):
@@ -688,8 +745,8 @@ class python_electrokitty_simulator:
                 lambda E: calc_kins(lamb, k0, E0, self.kb, T, el_num, LI, E)[1]]
     
     def _get_EC_kinetic_constants(self, k_vector, kinetic_types, f, num_el, type):
-        # A function for getting BV kinetics at the boundary condition
-        # in case of irreversible kinetics the function is a zero function
+        """A function for getting BV kinetics at the boundary condition
+        in case of irreversible kinetics the function is a zero function """
         for i in range(len(k_vector)):
             if type == "BV":
                 k_vector[i]=self._Butler_volmer_kinetics(k_vector[i][0], k_vector[i][1], k_vector[i][2], f, num_el[i])
@@ -702,13 +759,13 @@ class python_electrokitty_simulator:
         return k_vector
     
     def _time_step(self, c, a, cp, nx, dt, n1, n, bound1, bound2, pnom, constants, index, F, delta, isotherm_constants, null, spectator):
-        # A function for evaluating the time step
-        # given the guess, the weights, previous iteration, number of x points,
-        # dt, number of ads spec, number of bulk spec, boundary at the electrode
-        # boundary at the bulk limit, the program value of potential, a list of constants ordered:
-            # ads, bulk, ec, cell
-        # the index of how are kinetics manipulated, faraday constant, and the derivative of the potential
-        # evaluates the nonlinear set of equations to be solved at each time step
+        """A function for evaluating the time step
+        given the guess, the weights, previous iteration, number of x points,
+        dt, number of ads spec, number of bulk spec, boundary at the electrode
+        boundary at the bulk limit, the program value of potential, a list of constants ordered:
+            ads, bulk, ec, cell
+        the index of how are kinetics manipulated, faraday constant, and the derivative of the potential
+        evaluates the nonlinear set of equations to be solved at each time step """
         Ru,Cdl,A=constants[-1][1:]
         p=c[-2]
     
@@ -750,13 +807,13 @@ class python_electrokitty_simulator:
         return f
     
     def _eqilibration_step(self, c, a, cp, nx, dt, n1, n, bound1, bound2, pnom, constants, index, F, delta, isotherm_constants, null, spectator):
-        # A function for evaluating the time step
-        # given the guess, the weights, previous iteration, number of x points,
-        # dt, number of ads spec, number of bulk spec, boundary at the electrode
-        # boundary at the bulk limit, the program value of potential, a list of constants ordered:
-            # ads, bulk, ec, cell
-        # the index of how are kinetics manipulated, faraday constant, and the derivative of the potential
-        # evaluates the nonlinear set of equations to be solved at each time step
+        """A function for evaluating the time step
+        given the guess, the weights, previous iteration, number of x points,
+        dt, number of ads spec, number of bulk spec, boundary at the electrode
+        boundary at the bulk limit, the program value of potential, a list of constants ordered:
+            ads, bulk, ec, cell
+        the index of how are kinetics manipulated, faraday constant, and the derivative of the potential
+        evaluates the nonlinear set of equations to be solved at each time step """
         
         Ru,Cdl,A=constants[-1][1:]
         p=c[-2]
@@ -804,19 +861,19 @@ class python_electrokitty_simulator:
         return c
     
     def simulator_Main_loop(self, mechanism_list, kin_const ,Constants, Spatial_info, Time, Species_information, Potential_program, eqilibration=True):
-        # The main simulation function
-        # Given the mechanism string given as 
-            # C: or E: sum: f1 = or - sum b1 \n ...
-        # A list of constants: list of lists for ads, bulk, ec, cell and diffusion
-            # cell constants are supposed to be given as temperature, resistance, capacitance, electrode area 
-        # Spatial info is a list with the fraction and number of x points, rest is evaluated by default
-        # Time is requiered to be evenly spaced and is given as a numpy array
-        # Species information is a list of two lists:
-            # first contains the initial condition for adsorbed species given in gamas (moles per surface)
-            # second is a list of functions to evaluate the initial condition of the concentration profile at t=0
-        # Potential program is as a numpy array for wich the current is then updated
+        """The main simulation function
+        Given the mechanism string given as 
+            C: or E: sum: f1 = or - sum b1 \n ...
+        A list of constants: list of lists for ads, bulk, ec, cell and diffusion
+            cell constants are supposed to be given as temperature, resistance, capacitance, electrode area 
+        Spatial info is a list with the fraction and number of x points, rest is evaluated by default
+        Time is requiered to be evenly spaced and is given as a numpy array
+        Species information is a list of two lists:
+            first contains the initial condition for adsorbed species given in gamas (moles per surface)
+            second is a list of functions to evaluate the initial condition of the concentration profile at t=0
+        Potential program is as a numpy array for wich the current is then updated
         
-        # The function returns 3 arrays in given order: potential, current, time
+        The function returns 3 arrays in given order: potential, current, time """
         
         self.t=Time
         spec, index, types, r_ind, num_el=mechanism_list
