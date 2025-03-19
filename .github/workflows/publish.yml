@@ -33,10 +33,10 @@ jobs:
       run: >-
         python3 -m
         pip install
-        build
+        setuptools pybind11
         --user
     - name: Build a binary wheel and a source tarball
-      run: python3 -m build
+      run: python3 -m setup.py sdist
     - name: Store the distribution packages
       uses: actions/upload-artifact@v4
       with:
