@@ -36,7 +36,7 @@ jobs:
         setuptools pybind11 twine
         --user
     - name: Build a binary wheel and a source tarball
-      run: python3 -m setup.py sdist
+      run: python3 setup.py sdist
     - name: Store the distribution packages
       uses: actions/upload-artifact@v4
       with:
