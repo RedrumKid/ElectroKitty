@@ -312,6 +312,8 @@ class electrokitty_loss():
         kinetics=list(kin)
         cell_params=list(cell_const)
         spec_info=list(species_information)
+        spec_info[0] = list(spec_info[0])
+        spec_info[1] = list(spec_info[1])
         iso = list(isotherm)
         
         for info in tells:
