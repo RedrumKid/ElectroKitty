@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.abspath(".."))
 project = 'ElectroKitty'
 copyright = '2025, Ožbej Vodeb'
 author = 'Ožbej Vodeb'
-release = '1.0.10'
+release = '1.0.11.2'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
