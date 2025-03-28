@@ -12,6 +12,8 @@ on:
   push:
     branches:
       - master 
+    paths:
+      - '**.py'
 
 permissions:
   contents: read
