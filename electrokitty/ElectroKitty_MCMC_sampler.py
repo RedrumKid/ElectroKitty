@@ -13,7 +13,7 @@ class electrokitty_sampler():
     Class containing the MCMC sampler used in parameter estimation
     """
     def __init__(self, n_samples, burn_in_per, num_chains, 
-                 multi_processing, bounds, I_data):
+                 multi_processing, bounds, I_data, n_processes = 1):
         
         self.n_samples=n_samples
         self.burn_in_per=burn_in_per
@@ -34,6 +34,7 @@ class electrokitty_sampler():
         self.E_generated = None
         self.tells = None
         self.gamppos = None
+        self.n_cores = n_processes
     
     def give_y_sim(self, ysim):
         """
@@ -182,7 +183,7 @@ class electrokitty_sampler():
         
         chains=[]
         
-        if self.multi_processing == False:
+        if self.multi_processing == False or self.n_cores == 1:
             print("Starting MCMC sampling")
             print()
             
@@ -196,17 +197,17 @@ class electrokitty_sampler():
                 chains.append(single_chain)
             
             
-        else:
+        elif self.multi_processing == True and self.n_cores >= 1:
+            print("Running in multiprocess mode using: "+str(self.n_cores)+" processes")
             stuff=[]
             for i in range(self.num_chains):
                 stuff.append([self.n_samples, initial_positions[i], 
                               lower_bound, upper_bound, i])
             
-            pool=multiprocessing.Pool(self.num_chains)
+            pool=multiprocessing.Pool(self.n_cores)
             chains=pool.map(self.single_chain_wrap, stuff)
             pool.close()
             pool.join()
             
-        
         chains=np.array(chains)
         return chains
