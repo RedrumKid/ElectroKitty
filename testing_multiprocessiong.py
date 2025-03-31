@@ -32,11 +32,12 @@ if __name__ == "__main__":
     sim.create_simulation(kin, cell_const, D, iso, si, spec_info)
         
     e, i, t = sim.simulate()
+    i += np.random.normal(0, 0.01*max(i), len(i))
     sim.set_data(e, i, t)
-    #sim.simulate()
-    #im.Plot_data()
-    #sim.Plot_simulation()
-    sim.sample_parameter_distribution(n_samples = 2000, num_chains=2, multi_processing=True, n_processes=1)
+    sim.simulate()
+    sim.Plot_data()
+    sim.Plot_simulation()
+    sim.sample_parameter_distribution(n_samples = 40000, num_chains=2, multi_processing=True, n_processes=2)
     print(len(sim.chains))
 
     n_par = len(sim.chains[0][0, :])
