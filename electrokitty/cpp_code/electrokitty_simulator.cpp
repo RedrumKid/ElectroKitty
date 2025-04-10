@@ -564,14 +564,7 @@ PYBIND11_MODULE(cpp_ekitty_simulator, m){
     .def_readwrite("E_generated", &Electrokitty_simulator::E_generated)
     .def_readwrite("concentration_profile", &Electrokitty_simulator::concentration_profile)
     .def_readwrite("surface_profile", &Electrokitty_simulator::surface_profile)
-    /* .def(py::pickle(
-        [](const Electrokitty_simulator &p){
-                return py::make_tuple(p.R(), p.F(), p.Pi());
-        },
-        [](py::tuple t){
-                Electrokitty_simulator p(t[0].cast<std::double>(), t[1].cast<std::double>(), t[2].cast<std::double>());
-                return p;
-        }
-    )) */
+    .def("__getstate__", [](Electrokitty_simulator &self){})
+    .def("__setstate__", [](Electrokitty_simulator &self){})
     ;
 }

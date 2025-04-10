@@ -532,7 +532,7 @@ class ElectroKitty:
         self.species_information=spinfo
         self.isotherm=isot
        
-    def sample_parameter_distribution(self, n_samples=2000, burn_in_per=0.3, num_chains=1, multi_processing=False,
+    def sample_parameter_distribution(self, n_samples=2000, burn_in_per=0.3, num_chains=1, multi_processing=False, n_processes = 1,
                                       fit_kin = True, fit_Cdl=False, fit_Ru=False, fit_gamamax=False,
                                                       fit_A=False, fit_iso=False, eqilibration=False, bounds=None, N_disp = 15):
         
@@ -546,6 +546,7 @@ class ElectroKitty:
             - burn_in_per: fraction of samples to be discared when updating the class
             - num_chains: number of chains to be calculated
             - multiprocessing: True in order to perform MCMC on multiple cores
+            - n_processes: The number of processes to run if multiprocessing is set as True
             - fit_kin: True to fit kinetic parameters
             - fit_Cdl: True to fit the double layer capacitance
             - fit_Ru: True to fit uncompensated resistance
@@ -574,7 +575,7 @@ class ElectroKitty:
             bounds=[lower_bound, upper_bound]
         
         self.MCMC_sampler=electrokitty_sampler(n_samples, burn_in_per, num_chains, 
-                     multi_processing, bounds, self.I_data)
+                     multi_processing, bounds, self.I_data, n_processes = n_processes)
 
         self.MCMC_sampler.set_constants(self.cell_const, self.diffusion_const, self.isotherm, self.spectators, self.spatial_info, self.species_information,
                                         self.kin, self.mechanism_list, self.t, self.E_generated, self.tells, self.gammaposition)
