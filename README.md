@@ -39,3 +39,8 @@ Suggestions on how to further develop the project are welcome.
 
 ElectroKitty is published under the BSD 3 clause licence. 
 
+## Citing
+
+If you use ElectroKitty please cite:
+
+https://doi.org/10.1021/acselectrochem.4c00218
