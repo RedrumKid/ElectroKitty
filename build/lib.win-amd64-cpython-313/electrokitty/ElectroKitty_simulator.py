@@ -408,7 +408,6 @@ class electrokitty_simulator:
             current, E_Corr, surface_profile, concentration_profile = self.simulate_dispersion()
 
         else: 
-            print(self.sim_isotherm)
             self.simulator = cpp_ekitty_simulator()
             self.simulator.set_parameters(
                                 self.sim_cell_const, self.sim_diffusion_const, self.sim_isotherm, self.sim_spectators, 
@@ -420,7 +419,6 @@ class electrokitty_simulator:
             self.simulator.set_simulation_programm(self.t, self.E_gen)
             
             current = self.simulator.simulate()
-            print(current)
             E_Corr = self.simulator.give_E_corr()
             surface_profile = self.simulator.give_surf_profile()
             concentration_profile = self.simulator.give_concentration_profile()
