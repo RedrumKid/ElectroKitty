@@ -131,12 +131,12 @@ class ElectroKitty:
         spectators = [np.ones(len(Species_information[0])),np.ones(len(Species_information[1]))]
         self.spectators = spectators
         self.mechanism_list=self.Parser.Parse_mechanism()
-        
+        self.simulator.give_mechanism_list(self.mechanism_list)
         self.simulator.give_simulation_constants(self.kin, self.cell_const, 
                                                  self.diffusion_const, self.isotherm, 
                                                  self.spatial_info, self.species_information, kinetic_model=self.kinetic_model)
         
-        self.simulator.give_mechanism_list(self.mechanism_list)
+        
 	
     def save(self, filename):
         """
@@ -200,11 +200,11 @@ class ElectroKitty:
 
         self.Parser=electrokitty_parser(self.string)
         self.mechanism_list=self.Parser.Parse_mechanism()
+        self.simulator.give_mechanism_list(self.mechanism_list)
         self.simulator.give_simulation_constants(self.kin, self.cell_const, 
                                                  self.diffusion_const, self.isotherm, 
                                                  self.spatial_info, self.species_information)
         
-        self.simulator.give_mechanism_list(self.mechanism_list)
         self.simulator.give_simulation_program(self.t, self.E_generated)
 	
         self.loss_function=electrokitty_loss(self.kin, self.species_information, self.cell_const ,self.isotherm, self.I_data)
@@ -516,11 +516,11 @@ class ElectroKitty:
         spectators = [np.ones(len(self.species_information[0])),np.ones(len(self.species_information[1]))]
 
         self.mechanism_list=self.Parser.Parse_mechanism()
+        self.simulator.give_mechanism_list(self.mechanism_list)
         self.simulator.give_simulation_constants(self.kin, self.cell_const, 
                                                  self.diffusion_const, self.isotherm, 
                                                  self.spatial_info, self.species_information)
         
-        self.simulator.give_mechanism_list(self.mechanism_list)
         self.simulator.give_simulation_program(self.t, self.E_generated)
         
         self.current, self.E_Corr, self.surface_profile, self.concentration_profile = self.simulator.simulate()

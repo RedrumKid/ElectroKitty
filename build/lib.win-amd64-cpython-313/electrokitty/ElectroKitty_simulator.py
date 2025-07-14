@@ -53,7 +53,7 @@ class electrokitty_simulator:
         """
         A simple function to check if a parameter is a float or an intiger
         """
-        if type(param) is float or type(param) is int:
+        if type(param) is not list and type(param) is not tuple:
             return True
         else:
             return False
@@ -112,8 +112,7 @@ class electrokitty_simulator:
             self.dispersed_kin.append(in_between)
             if check:
                 self.simulate_with_dispersion = check
-            
-    
+
     def give_simulation_constants(self, kins, cell_consts, 
                           Diffusion_consts, isotherms ,Spatial_infos , 
                           Species_informations, spectatorss=False, kinetic_model = "BV"):
@@ -404,11 +403,12 @@ class electrokitty_simulator:
             - surface_profile: the potential dependant surface concentrations
             - concentration_profile: the potential dependand concentration profile
         """
-
+        self.simulate_with_dispersion = False
         if self.simulate_with_dispersion:
             current, E_Corr, surface_profile, concentration_profile = self.simulate_dispersion()
 
         else: 
+            print(self.sim_isotherm)
             self.simulator = cpp_ekitty_simulator()
             self.simulator.set_parameters(
                                 self.sim_cell_const, self.sim_diffusion_const, self.sim_isotherm, self.sim_spectators, 
@@ -420,6 +420,7 @@ class electrokitty_simulator:
             self.simulator.set_simulation_programm(self.t, self.E_gen)
             
             current = self.simulator.simulate()
+            print(current)
             E_Corr = self.simulator.give_E_corr()
             surface_profile = self.simulator.give_surf_profile()
             concentration_profile = self.simulator.give_concentration_profile()

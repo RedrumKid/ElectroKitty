@@ -124,6 +124,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
         }
 
         vector<double> simulate(){
+                cout<<"heresim"<<endl;
                 current.clear();
                 E_Corr.clear();
                 surface_profile.clear();
@@ -214,8 +215,11 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                         double max_surf_conc;
                         max_surf_conc = *max_element(species_info[0].begin(), species_info[0].end());
                         for (int i = 0; i<isotherm_cons_burner.size(); i++){
-                                for(int j = 0; i<isotherm_cons_burner[i].size(); j++){
+                                cout<<"here"<<endl;
+                                for(int j = 0; j<isotherm_cons_burner[i].size(); j++){
+                                        cout<<"here1"<<endl;
                                         for(int k = 0; k<isotherm_cons_burner[i][j].size(); k++){
+                                                cout<<"here2"<<endl;
                                                 isotherm_cons_burner[i][j][k]/=max_surf_conc;
                                         }
                                 }
@@ -223,12 +227,14 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 }
 
                 for (int i = 0; i<isotherm_cons_burner.size(); i++){
-                        for(int j = 0; i<isotherm_cons_burner[i].size(); j++){
+                        for(int j = 0; j<isotherm_cons_burner[i].size(); j++){
                                 for(int k = 0; k<number_of_diss_spec; k++){
                                         isotherm_cons_burner[i][j].push_back(0.);
                                 }
                         }
                 }
+
+                cout<<"here"<<endl;
                 
                 ads_cons = create_constant_list(r_ind[0], kinetic_cons);
                 bulk_cons = create_constant_list(r_ind[1], kinetic_cons);

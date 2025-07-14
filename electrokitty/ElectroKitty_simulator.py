@@ -112,8 +112,6 @@ class electrokitty_simulator:
             self.dispersed_kin.append(in_between)
             if check:
                 self.simulate_with_dispersion = check
-            
-    def update_isotherm(self, isotherm, mechanism_list):
 
     def give_simulation_constants(self, kins, cell_consts, 
                           Diffusion_consts, isotherms ,Spatial_infos , 
@@ -405,11 +403,12 @@ class electrokitty_simulator:
             - surface_profile: the potential dependant surface concentrations
             - concentration_profile: the potential dependand concentration profile
         """
-
+        self.simulate_with_dispersion = False
         if self.simulate_with_dispersion:
             current, E_Corr, surface_profile, concentration_profile = self.simulate_dispersion()
 
         else: 
+            print(self.sim_isotherm)
             self.simulator = cpp_ekitty_simulator()
             self.simulator.set_parameters(
                                 self.sim_cell_const, self.sim_diffusion_const, self.sim_isotherm, self.sim_spectators, 
