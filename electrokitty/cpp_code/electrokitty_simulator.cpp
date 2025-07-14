@@ -50,7 +50,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
         vector<double> cell_const;
 
         vector<double> diffusion_const;
-        vector<double> isotherm;
+        vector<vector<vector<double>>> isotherm;
 
         vector<double> spectators;
         vector<double> spatial_information;
@@ -87,7 +87,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
         void set_params(
         vector<double> scell_const,
         vector<double> sdiffusion_const,
-        vector<double> sisotherm,
+        vector<vector<vector<double>>> sisotherm,
         vector<vector<double>> sspectators,
         vector<double> sspatial_information,
         vector<vector<double>> sspecies_information,
@@ -131,11 +131,10 @@ The vectors are the same as with Python, except mechanism list, this one is chop
 
                 cons.push_back(cell_const);
                 cons.push_back(diffusion_const);
-                cons.push_back(isotherm);
                 cons.push_back(spectators);
 
                 simulator_main_loop(
-                        spec, index, types, r_ind, num_el, kin, cons,spatial_information, t, species_information,
+                        spec, index, types, r_ind, num_el, kin, cons, isotherm, spatial_information, t, species_information,
                         E_generated, 0);
                 cons.clear();
                 return current;
@@ -165,7 +164,8 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 vector<double> nnum_el,
                 vector<vector<double>> kinetic_cons,
                 vector<vector<double>> constants,
-                // odstran če se da - se ne da
+                vector<vector<vector<double>>> isotherm_pass,
+
                 vector<double> spatial_info,
                 //
                 vector<double> time,
@@ -174,7 +174,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 int eqilibration = 0
                 )
                 {
-                vector<double> isotherm_cons_burner;
+                vector<vector<vector<double>>> isotherm_cons_burner;
                 vector<vector<double>> ads_cons;
                 vector<vector<double>> bulk_cons;
                 vector<vector<double>> EC_cons;
@@ -200,26 +200,34 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 
                 cell_const = constants[0];
                 diffusion_const = constants[1];
-                isotherm = constants[2];
-                isotherm_cons_burner = constants[2];
-                spectators = constants[3];
+                spectators = constants[2];
+
+                isotherm = isotherm_pass;
+                isotherm_cons_burner = isotherm_pass;
 
                 species_information = species_info;
 
-                vector<double> null(number_of_diss_spec);
-                for (int i = 0; i<null.size(); i++){
-                        null[i] = 0.;
-                }
+                vector<vector<vector<double>>> null(isotherm.size(), 
+                        vector<vector<double>>(2, vector<double>(number_of_diss_spec+number_of_surf_conf, 0.)));
                 
                 if (number_of_surf_conf>0){
                         double max_surf_conc;
                         max_surf_conc = *max_element(species_info[0].begin(), species_info[0].end());
                         for (int i = 0; i<isotherm_cons_burner.size(); i++){
-                                isotherm_cons_burner[i]/=max_surf_conc;
+                                for(int j = 0; i<isotherm_cons_burner[i].size(); j++){
+                                        for(int k = 0; k<isotherm_cons_burner[i][j].size(); k++){
+                                                isotherm_cons_burner[i][j][k]/=max_surf_conc;
+                                        }
+                                }
                         }
                 }
-                for(int i = 0; i<number_of_diss_spec; i++){
-                        isotherm_cons_burner.push_back(0.);
+
+                for (int i = 0; i<isotherm_cons_burner.size(); i++){
+                        for(int j = 0; i<isotherm_cons_burner[i].size(); j++){
+                                for(int k = 0; k<number_of_diss_spec; k++){
+                                        isotherm_cons_burner[i][j].push_back(0.);
+                                }
+                        }
                 }
                 
                 ads_cons = create_constant_list(r_ind[0], kinetic_cons);
@@ -251,10 +259,6 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 bound1 = calc_boundary_condition(x_dir, 0, diffusion_const, 3, velocity_c);
 
                 n = number_of_surf_conf+number_of_diss_spec*(int(x_dir.size()))+2;
-                /* double wa[( n * ( 3 * n + 13 ) ) / 2 + 100];
-                int lw = ( n * ( 3 * n + 13 ) ) / 2 + 100;
-                double x[number_of_surf_conf+number_of_diss_spec*(x_dir.size())+2];
-                double f[number_of_surf_conf+number_of_diss_spec*(x_dir.size())+2]; */
 
                 double wa[100000];
                 int lw = 100000;
@@ -285,12 +289,12 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 if (eqilibration == 0){
                         params.set_params(int(spatial_info[1]), dt, number_of_surf_conf, number_of_diss_spec, 
                         bound1, bound2, a, null, various_constants, index, isotherm_cons_burner, 
-                        spectators, 1., cell_const, kinetic_model);
+                        spectators, 1., cell_const, kinetic_model, r_ind);
                         params.set_ec_params(cell_const[0], num_el, types[2]);
                 }else{
                         params.set_params(int(spatial_info[1]), dt, number_of_surf_conf, number_of_diss_spec, 
                         bound1, bound2, a, null, various_constants, index, isotherm_cons_burner, 
-                        spectators, 0., cell_const, kinetic_model);
+                        spectators, 0., cell_const, kinetic_model, r_ind);
                         params.set_ec_params(cell_const[0], num_el, types[2]);
                 }
                 
@@ -495,7 +499,7 @@ private:
                 double ga;
                 bound_slice = params.aslice(x, 0, params.n_ads+params.n_dis);
                 kinetics = params.sum_two_vectors(params.calc_kinetics(0, bound_slice, params.isotherm),
-                        params.calc_EC_kinetics(2,bound_slice, x[n-2]));
+                        params.calc_EC_kinetics(2, bound_slice, x[n-2]));
                 for(int i = 0; i < params.n_ads; i++){
                         f[i] = (x[i] - params.cp[i])/params.dt*params.eqilib - kinetics[i]*params.spectator[i];
                 }

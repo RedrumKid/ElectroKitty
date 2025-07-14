@@ -110,10 +110,11 @@ struct Params{
         vector<vector<double>> bound1;
         vector<double> bound2;
         vector<vector<vector<double>>> a;
-        vector<double> null;
         vector<vector<vector<double>>> constants;
         vector<vector<vector<vector<int>>>> index;
-        vector<double> isotherm;
+        vector<vector<int>> r_ind;
+        vector<vector<vector<double>>> isotherm;
+        vector<vector<vector<double>>> null;
         vector<double> spectator;
         string kinetic_model;
 
@@ -121,8 +122,9 @@ struct Params{
 
         void set_params(int nnx, double ddt, int nn1, int nn,
         vector<vector<double>> bbound1, vector<double> bbound2, vector<vector<vector<double>>> aa,
-        vector<double> nnull, vector<vector<vector<double>>> cconstants, vector<vector<vector<vector<int>>>> iindex,
-        vector<double> iisotherm_constants, vector<double> sspectator, double eq, vector<double> cell_cs, string kin_model){
+        vector<vector<vector<double>>> nnull, vector<vector<vector<double>>> cconstants, vector<vector<vector<vector<int>>>> iindex,
+        vector<vector<vector<double>>> iisotherm_constants, vector<double> sspectator, double eq, vector<double> cell_cs, string kin_model,
+        vector<vector<int>> r_ind_pass){
                 nx = nnx;
                 dt = ddt;
                 n_ads = nn1;
@@ -140,6 +142,7 @@ struct Params{
                 A = cell_cs[3];
                 eqilib = eq;
                 kinetic_model = kin_model;
+                r_ind = r_ind_pass;
         }
 
         void set_ec_params(double Temp, vector<double> els, vector<int> kinetic_types){
@@ -181,11 +184,12 @@ struct Params{
                 return k_matrix;
         }
 
-        vector<double> calc_kinetics(int reaction_type, vector<double> c, vector<double> iso){
+        vector<double> calc_kinetics(int reaction_type, vector<double> c, vector<vector<vector<double>>> isotherm){
 
                 vector<double> k_matrix(c.size());
                 vector<vector<int>> step;
                 vector<double> cons;
+                vector<vector<double>> iso_inbtwn;
                 double forward_step;
                 double backward_step;
 
@@ -195,8 +199,10 @@ struct Params{
                         forward_step = cons[0];
                         backward_step = cons[1];
 
-                        forward_step = iterate_over_concentration(step[0], c, forward_step, iso);
-                        backward_step = iterate_over_concentration(step[1], c, backward_step, iso);
+                        iso_inbtwn = isotherm[r_ind[reaction_type][i]];
+
+                        forward_step = iterate_over_concentration(step[0], c, forward_step, iso_inbtwn[0]);
+                        backward_step = iterate_over_concentration(step[1], c, backward_step, iso_inbtwn[1]);
                         k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0]);
                         k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1]);
                 }
@@ -208,17 +214,20 @@ struct Params{
                 vector<double> k_matrix(c.size());
                 vector<vector<int>> step;
                 vector<double> cons;
+                vector<vector<double>> iso_inbtwn;
                 double forward_step;
                 double backward_step;
 
-                for (int i = 0; i<index[reaction_type].size() ;i++){
+                for (int i = 0; i<index[reaction_type].size(); i++){
                         step = index[reaction_type][i];
                         cons = ec_kin_consts.calc_kinetics(E, i);
                         forward_step = cons[0];
                         backward_step = cons[1];
 
-                        forward_step = iterate_over_concentration(step[0], c, forward_step, isotherm);
-                        backward_step = iterate_over_concentration(step[1], c, backward_step, isotherm);
+                        iso_inbtwn = isotherm[r_ind[reaction_type][i]];
+
+                        forward_step = iterate_over_concentration(step[0], c, forward_step, iso_inbtwn[0]);
+                        backward_step = iterate_over_concentration(step[1], c, backward_step, iso_inbtwn[1]);
                         k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0]);
                         k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1]);
                 }
@@ -230,6 +239,7 @@ struct Params{
 
                 vector<double> k_matrix(c.size());
                 vector<vector<int>> step;
+                vector<vector<double>> iso_inbtwn;
                 vector<double> cons;
                 double forward_step;
                 double backward_step;
@@ -240,8 +250,10 @@ struct Params{
                         forward_step = cons[0];
                         backward_step = cons[1];
 
-                        forward_step = iterate_over_concentration(step[0], c, forward_step, isotherm);
-                        backward_step = iterate_over_concentration(step[1], c, backward_step, isotherm);
+                        iso_inbtwn = isotherm[r_ind[reaction_type][i]];
+
+                        forward_step = iterate_over_concentration(step[0], c, forward_step, iso_inbtwn[0]);
+                        backward_step = iterate_over_concentration(step[1], c, backward_step, iso_inbtwn[1]);
 
                         current += -forward_step + backward_step;
                 }

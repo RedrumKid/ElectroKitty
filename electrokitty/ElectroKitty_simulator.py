@@ -53,7 +53,7 @@ class electrokitty_simulator:
         """
         A simple function to check if a parameter is a float or an intiger
         """
-        if type(param) is float or type(param) is int:
+        if type(param) is not list and type(param) is not tuple:
             return True
         else:
             return False
@@ -113,7 +113,8 @@ class electrokitty_simulator:
             if check:
                 self.simulate_with_dispersion = check
             
-    
+    def update_isotherm(self, isotherm, mechanism_list):
+
     def give_simulation_constants(self, kins, cell_consts, 
                           Diffusion_consts, isotherms ,Spatial_infos , 
                           Species_informations, spectatorss=False, kinetic_model = "BV"):
