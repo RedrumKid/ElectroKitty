@@ -73,7 +73,7 @@ class electrokitty_loss():
         """
         self.ysim=ysim
         
-    def create_ACV_problem(self, freq, N_hars, I_har_exp, t,w):
+    def create_ACV_problem(self, freq, N_hars, I_har_exp, t, w):
         """
         Creating the minimisation problem for ACV
         
@@ -92,7 +92,7 @@ class electrokitty_loss():
         """
         i_sim = self.ysim(guess)
 
-        return np.sqrt(np.sum((i_sim-self.I_data)**2)/np.sum(self.I_data**2)/len(self.I_data))
+        return np.sqrt(np.sum((i_sim-self.I_data)**2)/np.sum(self.I_data**2))
     
     def RMSE_har(self, guess):
         """
@@ -103,7 +103,7 @@ class electrokitty_loss():
         
         L=0
         for i in range(len(i_har_sim)):
-            L+=1/(self.N_hars+1)*np.sqrt(np.sum((i_har_sim[i]-self.I_har_exp[i])**2)/np.sum(self.I_har_exp[i]**2)/len(self.I_har_exp[i]))
+            L+=1/(self.N_hars+1)*np.sqrt(np.sum((i_har_sim[i]-self.I_har_exp[i])**2)/np.sum(self.I_har_exp[i]**2))
         return L
     
     def FFT_analysis(self, f,N,w, current, t):
@@ -143,7 +143,7 @@ class electrokitty_loss():
         Returns:
             either False or True depending on the parameter
         """
-        if type(param) is float or type(param) is int:
+        if type(param) is not list and type(param) is not tuple:
             return True
         else:
             return False
