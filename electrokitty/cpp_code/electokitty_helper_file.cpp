@@ -155,11 +155,18 @@ struct Params{
                 delta = dE;
         }
 
-        double iterate_over_concentration(vector<int> step, vector<double> c, double term, vector<double>isotherm){
+        double iterate_over_concentration(vector<int> step, vector<double> c, double term){
                 int j;
-                for(int i = 0; i<int(step.size()); i++){
+                for(int i = 0; i < int(step.size()); i++){
                         j = step[i];
-                        term*=c[j]*exp(-isotherm[j]*c[j]);
+                        term*=c[j];
+                }
+                return term;
+        }
+
+        double iterate_over_isotherm(vector<double> c, double term, vector<double> isotherm_passed){
+                for(int i = 0; i < int(isotherm_passed.size()); i++){
+                        term*=exp(-isotherm_passed[i]*c[i]);
                 }
                 return term;
         }
@@ -193,7 +200,7 @@ struct Params{
                 double forward_step;
                 double backward_step;
 
-                for (int i = 0; i<index[reaction_type].size() ;i++){
+                for (int i = 0; i < index[reaction_type].size() ;i++){
                         step = index[reaction_type][i];
                         cons = constants[reaction_type][i];
                         forward_step = cons[0];
@@ -201,8 +208,12 @@ struct Params{
 
                         iso_inbtwn = isotherm[r_ind[reaction_type][i]];
 
-                        forward_step = iterate_over_concentration(step[0], c, forward_step, iso_inbtwn[0]);
-                        backward_step = iterate_over_concentration(step[1], c, backward_step, iso_inbtwn[1]);
+                        forward_step = iterate_over_concentration(step[0], c, forward_step);
+                        backward_step = iterate_over_concentration(step[1], c, backward_step);
+
+                        forward_step = iterate_over_isotherm(c, forward_step, iso_inbtwn[0]);
+                        backward_step = iterate_over_isotherm(c, backward_step, iso_inbtwn[1]);
+
                         k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0]);
                         k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1]);
                 }
@@ -226,8 +237,12 @@ struct Params{
 
                         iso_inbtwn = isotherm[r_ind[reaction_type][i]];
 
-                        forward_step = iterate_over_concentration(step[0], c, forward_step, iso_inbtwn[0]);
-                        backward_step = iterate_over_concentration(step[1], c, backward_step, iso_inbtwn[1]);
+                        forward_step = iterate_over_concentration(step[0], c, forward_step);
+                        backward_step = iterate_over_concentration(step[1], c, backward_step);
+
+                        forward_step = iterate_over_isotherm(c, forward_step, iso_inbtwn[0]);
+                        backward_step = iterate_over_isotherm(c, backward_step, iso_inbtwn[1]);
+
                         k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0]);
                         k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1]);
                 }
@@ -252,8 +267,11 @@ struct Params{
 
                         iso_inbtwn = isotherm[r_ind[reaction_type][i]];
 
-                        forward_step = iterate_over_concentration(step[0], c, forward_step, iso_inbtwn[0]);
-                        backward_step = iterate_over_concentration(step[1], c, backward_step, iso_inbtwn[1]);
+                        forward_step = iterate_over_concentration(step[0], c, forward_step);
+                        backward_step = iterate_over_concentration(step[1], c, backward_step);
+
+                        forward_step = iterate_over_isotherm(c, forward_step, iso_inbtwn[0]);
+                        backward_step = iterate_over_isotherm(c, backward_step, iso_inbtwn[1]);
 
                         current += -forward_step + backward_step;
                 }
@@ -262,7 +280,7 @@ struct Params{
 
                 vector<double> sum_two_vectors(vector<double> a, vector<double> b){
                 vector<double> c;
-                for (int i = 0; i<a.size(); i++){
+                for (int i = 0; i < a.size(); i++){
                         c.push_back(a[i]+b[i]);
                 }
                 return c;
