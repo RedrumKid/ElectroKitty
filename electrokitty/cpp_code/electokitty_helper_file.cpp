@@ -117,6 +117,8 @@ struct Params{
         vector<double> spectator;
         string kinetic_model;
 
+        vector<vector<vector<double>>> stechiometry_coefiecents;
+
         EC_kinetics ec_kin_consts;
 
         void set_params(int nnx, double ddt, int nn1, int nn,
@@ -140,6 +142,41 @@ struct Params{
                 A = cell_cs[3];
                 eqilib = eq;
                 kinetic_model = kin_model;
+
+                stechiometry_coefiecents = update_steciometry(stechiometry_coefiecents, index, 0, n_ads + n_dis);
+                stechiometry_coefiecents = update_steciometry(stechiometry_coefiecents, index, 1, n_dis);
+                stechiometry_coefiecents = update_steciometry(stechiometry_coefiecents, index, 2, n_ads + n_dis);
+                
+        }
+
+        vector<vector<vector<double>>> update_steciometry(vector<vector<vector<double>>> stec_coef, 
+                vector<vector<vector<vector<int>>>> index, int reac_type, int species_size){
+                // type, reaction, steps, indicies
+                vector<vector<double>> stech_info;
+                
+
+                for (int i = 0; i < index[reac_type].size(); i++){ // reaction
+                     // step
+                  vector<double> step_tech(species_size, 0.);
+                  for (int ind = 0; ind < index[reac_type][i][0].size(); ind++){ // indicies
+                    step_tech[index[reac_type][i][0][ind]] += 1.;
+                  }
+
+                  for (int ind = 0; ind < index[reac_type][i][1].size(); ind++){ // indicies
+                    step_tech[index[reac_type][i][1][ind]] += -1.;
+                  }
+                  
+                  for (int ind = 0; ind < step_tech.size(); ind++){
+                    step_tech[ind] = fabs(step_tech[ind]);
+                  }
+
+                  stech_info.push_back(step_tech);
+
+                }
+
+                stec_coef.push_back(stech_info);
+
+                return stec_coef;
         }
 
         void set_ec_params(double Temp, vector<double> els, vector<int> kinetic_types){
@@ -169,13 +206,13 @@ struct Params{
                 return b;
         }
 
-        vector<double> update_K_matrix(vector<double> k_matrix, double term_f, double term_b, vector<int> step){
+        vector<double> update_K_matrix(vector<double> k_matrix, double term_f, double term_b, vector<int> step, vector<double> stec_coefs){
                 vector<int> check;
-                for (int i = 0; i<int(step.size()); i++){
+                for (int i = 0; i < int(step.size()); i++){
                         if (find(check.begin(), check.end(), step[i]) == check.end() ){
                                 check.push_back(step[i]);
-                                k_matrix[step[i]]+=-term_f;
-                                k_matrix[step[i]]+=term_b;
+                                k_matrix[step[i]]+=-stec_coefs[step[i]]*term_f;
+                                k_matrix[step[i]]+=stec_coefs[step[i]]*term_b;
                         }
                 }
                 return k_matrix;
@@ -197,8 +234,8 @@ struct Params{
 
                         forward_step = iterate_over_concentration(step[0], c, forward_step, iso);
                         backward_step = iterate_over_concentration(step[1], c, backward_step, iso);
-                        k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0]);
-                        k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1]);
+                        k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0], stechiometry_coefiecents[reaction_type][i]);
+                        k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1], stechiometry_coefiecents[reaction_type][i]);
                 }
                 return k_matrix;
         }
@@ -219,8 +256,8 @@ struct Params{
 
                         forward_step = iterate_over_concentration(step[0], c, forward_step, isotherm);
                         backward_step = iterate_over_concentration(step[1], c, backward_step, isotherm);
-                        k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0]);
-                        k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1]);
+                        k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0], stechiometry_coefiecents[reaction_type][i]);
+                        k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1], stechiometry_coefiecents[reaction_type][i]);
                 }
                 return k_matrix;
         }
