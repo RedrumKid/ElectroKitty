@@ -79,14 +79,14 @@ struct EC_kinetics{
     vector<double> calc_kinetics(double E, int i){
         vector<double> ks(2);
         if (kinetic_model == "BV"){
-          ks[0] = irreversible_types[i][0]*kin_const[i][1]*el_nums[i]*exp(-kin_const[i][0]*el_nums[i]*f*(E-kin_const[i][2]));
-          ks[1] = irreversible_types[i][1]*kin_const[i][1]*el_nums[i]*exp((1-kin_const[i][0])*el_nums[i]*f*(E-kin_const[i][2]));
+          ks[0] = irreversible_types[i][0]*kin_const[i][1]*exp(-kin_const[i][0]*el_nums[i]*f*(E-kin_const[i][2]));
+          ks[1] = irreversible_types[i][1]*kin_const[i][1]*exp((1-kin_const[i][0])*el_nums[i]*f*(E-kin_const[i][2]));
 
         }else if (kinetic_model == "MH"){
           double eta = kT*el_nums[i]*(E - kin_const[i][2]);
           double UI = trap(-20. + eta, 20. + eta, 100, eta, kin_const[i][0]*kT);
-          ks[0] = irreversible_types[i][0]*kin_const[i][1]*UI/LUs[i]*el_nums[i]*exp(-eta/2.) ;
-          ks[1] = irreversible_types[i][1]*kin_const[i][1]*UI/LUs[i]*el_nums[i]*exp(eta/2.) ;
+          ks[0] = irreversible_types[i][0]*kin_const[i][1]*UI/LUs[i]*exp(-eta/2.) ;
+          ks[1] = irreversible_types[i][1]*kin_const[i][1]*UI/LUs[i]*exp(eta/2.) ;
         }
        
         return ks;
@@ -281,6 +281,7 @@ struct Params{
                         backward_step = iterate_over_concentration(step[1], c, backward_step, isotherm);
 
                         current += -forward_step + backward_step;
+                        current *= ec_kin_consts.el_nums[i];
                 }
                 return current;
         }
