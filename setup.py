@@ -3,6 +3,7 @@ from setuptools import setup, find_packages
 
 __version__ = "1.0.12.0"
 
+
 ext_modules = [
     Pybind11Extension(
         "cpp_ekitty_simulator",
