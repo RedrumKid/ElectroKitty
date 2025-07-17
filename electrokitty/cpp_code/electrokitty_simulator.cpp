@@ -300,7 +300,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 for (int tt = 0; tt<time.size(); tt++){
                         x[n-2] = potential_program[tt];
                         params.update_time_step(potential_program[tt], xp, delta_e[tt-1]);
-                        info = hybrd1(n, x, f, 1e-15, wa, lw, params);
+                        info = hybrd1(n, x, f, 1e-16, wa, lw, params);
                         xp = params.copy_array_to_vec(x, n);
                         c_bound = params.aslice(x, 0, number_of_diss_spec+number_of_surf_conf);
                         current.push_back(F*params.A*params.calc_current(2,c_bound,x[n-2]) + x[n-1]);
