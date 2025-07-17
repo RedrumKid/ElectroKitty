@@ -251,11 +251,6 @@ struct Params{
                         forward_step = iterate_over_isotherm(c, forward_step, iso_inbtwn[0]);
                         backward_step = iterate_over_isotherm(c, backward_step, iso_inbtwn[1]);
 
-                        k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0]);
-                        k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1]);
-
-                        forward_step = iterate_over_concentration(step[0], c, forward_step, iso);
-                        backward_step = iterate_over_concentration(step[1], c, backward_step, iso);
                         k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0], stechiometry_coefiecents[reaction_type][i]);
                         k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1], stechiometry_coefiecents[reaction_type][i]);
 
@@ -286,11 +281,6 @@ struct Params{
                         forward_step = iterate_over_isotherm(c, forward_step, iso_inbtwn[0]);
                         backward_step = iterate_over_isotherm(c, backward_step, iso_inbtwn[1]);
 
-                        k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0]);
-                        k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1]);
-
-                        forward_step = iterate_over_concentration(step[0], c, forward_step, isotherm);
-                        backward_step = iterate_over_concentration(step[1], c, backward_step, isotherm);
                         k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0], stechiometry_coefiecents[reaction_type][i]);
                         k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1], stechiometry_coefiecents[reaction_type][i]);
 
