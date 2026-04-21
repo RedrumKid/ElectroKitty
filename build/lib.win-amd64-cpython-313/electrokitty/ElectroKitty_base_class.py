@@ -83,7 +83,7 @@ class ElectroKitty:
         self.optimizer=None
         self.loss_function=None
         self.MCMC_sampler=None
-    
+        
     def create_simulation(self, kin, cell_const, 
                           Diffusion_const, isotherm,Spatial_info, 
                           Species_information, spectators=False, kinetic_model = "BV"):
@@ -182,6 +182,7 @@ class ElectroKitty:
         
         cPickle.dump(save_list, f, 2)
         f.close()
+        return True
     
     def save_json(self, filename):
         """
@@ -195,10 +196,6 @@ class ElectroKitty:
                 return arr.tolist()
             except:
                 return arr
-        if self.I_harmonics == None:
-            ihar = None
-        else:
-            ihar = [create_lists(cur) for cur in self.I_harmonics]
 
         dict = {
             "string": self.string,
@@ -213,9 +210,6 @@ class ElectroKitty:
             "current": create_lists(self.current),
             "t": create_lists(self.t),
             "I_data": create_lists(self.I_data),
-            "sp": create_lists(self.sp),
-            "freq": create_lists(self.freq),
-            "I_harmonics": ihar,
             "concentration_profile": create_lists(self.concentration_profile),
             "surface_profile": create_lists(self.surface_profile),
             "spectators": self.spectators,
@@ -227,12 +221,13 @@ class ElectroKitty:
             "tells": self.tells,
             "gamaposition": self.gamaposition,
             "multi_core_MCMC": self.multi_core_MCMC,
-            "chains": self.chains,
-            "mean_chain": self.mean_chain
+            "chains": create_lists(self.chains),
+            "mean_chain": create_lists(self.mean_chain)
         }
-        print(dict)
+
         with open(filename+".json", "w") as f:
             json.dump(dict, f, indent = 2)
+
         return dict
     
     def load(self, filename):
@@ -266,7 +261,56 @@ class ElectroKitty:
                 self.xlabels = self.loss_function.create_axis_labels_old(self.tells, self.mechanism_list[0][0])
             except:
                 self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
+        
+        return True
     
+    def load_from_json(self, filename):
+        with open(filename, "r") as f:
+            dict = json.load(f)
+        self.string = dict["string"]
+        self.kin = dict["kin"]
+        self.isotherm = dict["isotherm"]
+        self.cell_const = dict["cell_const"]
+        self.species_information = dict["species_information"]
+        self.diffusion_const = dict["diffusion_const"]
+        self.number_of_diss_spec = dict["number_of_diss_spec"]
+        self.number_of_surf_conf = dict["number_of_surf_conf"]
+        self.E_generated = dict["E_generated"]
+        self.current = dict["current"]
+        self.t = dict["t"]
+        self.I_data = dict["I_data"]
+        self.concentration_profile = dict["concentration_profile"]
+        self.surface_profile = dict["surface_profile"]
+        self.spectators = dict["spectators"]
+        self.spatial_info = dict["spatial_info"]
+        self.x = dict["x"]
+        self.E_Corr = dict["E_Corr"]
+        self.mechanism_list = dict["mechanism_list"]
+        self.fit_score = dict["fit_score"]
+        self.tells = dict["tells"]
+        self.gamaposition = dict["gamaposition"]
+        self.multi_core_MCMC = dict["multi_core_MCMC"]
+        self.chains = dict["chains"]
+        self.mean_chain = dict["mean_chain"]
+
+        self.Parser=electrokitty_parser(self.string)
+        self.mechanism_list=self.Parser.Parse_mechanism()
+        self.simulator.give_simulation_constants(self.kin, self.cell_const, 
+                                                 self.diffusion_const, self.isotherm, 
+                                                 self.spatial_info, self.species_information)
+        
+        self.simulator.give_mechanism_list(self.mechanism_list)
+        self.simulator.give_simulation_program(self.t, self.E_generated)
+	
+        self.loss_function=electrokitty_loss(self.kin, self.species_information, self.cell_const ,self.isotherm, self.I_data)
+        if self.tells != None:
+            try:
+                self.xlabels = self.loss_function.create_axis_labels_old(self.tells, self.mechanism_list[0][0])
+            except:
+                self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
+        return True
+
+
     def set_data(self, E_data, i_data, t_data):
         """
         a function for importing data. This function updates E_generated the potential signal used for simulation

@@ -56,7 +56,11 @@ class electrokitty_simulator:
         if type(param) is float or type(param) is int:
             return True
         else:
-            return False
+            try:
+                param = float(param)
+                return True
+            except:
+                return False
     
     def check_for_params(self, some_list):
         """
@@ -127,7 +131,7 @@ class electrokitty_simulator:
         self.sim_spatial_info=Spatial_infos
         self.sim_species_information=Species_informations
         self.sim_kin=kins
-        spectators = [np.ones(len(Species_informations[0])),np.ones(len(Species_informations[1]))]
+        spectators = [np.ones(len(Species_informations[0])).tolist(),np.ones(len(Species_informations[1])).tolist()]
         self.sim_spectators = spectators
         self.kinetic_model = kinetic_model
         self.create_disp_lists()

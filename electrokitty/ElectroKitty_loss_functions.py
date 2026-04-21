@@ -146,7 +146,11 @@ class electrokitty_loss():
         if type(param) is float or type(param) is int:
             return True
         else:
-            return False
+            try:
+                param = float(param)
+                return True
+            except:
+                return False
         
     def create_parameter_guess(self, kin, species_information, cell_const, isotherm, fit_kin=True,
                 fit_Cdl=False, fit_Ru=False, fit_gamamax=False,
