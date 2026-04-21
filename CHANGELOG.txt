@@ -1,0 +1,4 @@
+1.0,11,6
+
+- added support for json files: the main class can now output or load from a json file
+- fixed the simulator giving an error, if numpy types are used in sim constants
