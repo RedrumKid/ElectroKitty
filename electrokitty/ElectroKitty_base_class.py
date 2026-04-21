@@ -8,6 +8,7 @@ Created on Fri Feb 16 14:43:51 2024
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import json
 from datetime import datetime
 import scipy.optimize as sciop
 import scipy.signal as scisi
@@ -128,7 +129,7 @@ class ElectroKitty:
         self.kinetic_model = kinetic_model
         self.safety_tuple = (create_copy_tuple(kin), create_copy_tuple(Species_information), tuple(cell_const), tuple(isotherm))
 
-        spectators = [np.ones(len(Species_information[0])),np.ones(len(Species_information[1]))]
+        spectators = [np.ones(len(Species_information[0])).tolist(),np.ones(len(Species_information[1])).tolist()]
         self.spectators = spectators
         self.mechanism_list=self.Parser.Parse_mechanism()
         
@@ -182,6 +183,59 @@ class ElectroKitty:
         cPickle.dump(save_list, f, 2)
         f.close()
     
+    def save_json(self, filename):
+        """
+        function to save class properties as a json file.
+
+        filename is the name of the file, with .json appended to the name by the function.
+        """
+
+        def create_lists(arr):
+            try:
+                return arr.tolist()
+            except:
+                return arr
+        if self.I_harmonics == None:
+            ihar = None
+        else:
+            ihar = [create_lists(cur) for cur in self.I_harmonics]
+
+        dict = {
+            "string": self.string,
+            "kin": self.kin,
+            "isotherm": self.isotherm,
+            "cell_const": self.cell_const,
+            "species_information": self.species_information,
+            "diffusion_const": self.diffusion_const,
+            "number_of_diss_spec": self.number_of_diss_spec,
+            "number_of_surf_conf": self.number_of_surf_conf,
+            "E_generated": create_lists(self.E_generated),
+            "current": create_lists(self.current),
+            "t": create_lists(self.t),
+            "I_data": create_lists(self.I_data),
+            "sp": create_lists(self.sp),
+            "freq": create_lists(self.freq),
+            "I_harmonics": ihar,
+            "concentration_profile": create_lists(self.concentration_profile),
+            "surface_profile": create_lists(self.surface_profile),
+            "spectators": self.spectators,
+            "spatial_info": self.spatial_info,
+            "x": create_lists(self.x),
+            "E_Corr": create_lists(self.E_Corr),
+            "mechanism_list": self.mechanism_list,
+            "fit_score": self.fit_score,
+            "tells": self.tells,
+            "gamaposition": self.gamaposition,
+            "multi_core_MCMC": self.multi_core_MCMC,
+            "chains": self.chains,
+            "mean_chain": self.mean_chain
+        }
+
+        with open(filename+".json", "w") as f:
+            json.dump(dict, f, indent = 2)
+
+        return dict
+    
     def load(self, filename):
         """
         a function to load a .ek file containing ElectroKitty class parameters to a class
@@ -214,6 +268,9 @@ class ElectroKitty:
             except:
                 self.xlabels = self.loss_function.create_axis_labels(self.tells, self.mechanism_list[0][0])
     
+    def load_from_json(self, filename):
+        
+
     def set_data(self, E_data, i_data, t_data):
         """
         a function for importing data. This function updates E_generated the potential signal used for simulation
