@@ -265,8 +265,16 @@ class ElectroKitty:
         return True
     
     def load_from_json(self, filename):
+        """
+        function to load class parameters from a .json file, given by filename.
+
+        Should be used for files created by electrokitty, but custom ones are possible.
+
+        """
+
         with open(filename, "r") as f:
             dict = json.load(f)
+
         self.string = dict["string"]
         self.kin = dict["kin"]
         self.isotherm = dict["isotherm"]

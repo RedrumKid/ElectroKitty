@@ -13,10 +13,10 @@ e, i, t = problem.simulate()
 problem.Plot_simulation()
 problem.set_data(e, i, t)
 
-problem.fit_to_data(algorithm = "CMA-ES", tolx = 10**-2, tolf=10**-2)
-problem.sample_parameter_distribution(n_samples = 60)
+# problem.fit_to_data(algorithm = "CMA-ES", tolx = 10**-2, tolf=10**-2)
+# problem.sample_parameter_distribution(n_samples = 60)
 
-problem.FFT_analyze_sim(10, 2, [1, 1, 1, 1])
+# problem.FFT_analyze_sim(10, 2, [1, 1, 1, 1])
 
 dict = problem.save_json("justatest")
 # print(dict.keys())
