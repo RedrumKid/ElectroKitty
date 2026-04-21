@@ -111,23 +111,29 @@ class ElectroKitty:
             - kinetic_model: choose either "BV" or "MH", for Butler-Volmer or Marcus-Hush electrochemical kinetics
         
         """
+
+        def float_a_list(lis):
+            return [float(val) for val in lis]
+        
         def create_copy_tuple(some_list):
             copy = []
             for arb in some_list:
                 copy.append(tuple(arb))
             return tuple(copy)
             
-        self.cell_const=tuple(cell_const)
-        self.diffusion_const=Diffusion_const
+        self.cell_const=tuple(float_a_list(cell_const))
+        self.diffusion_const=float_a_list(Diffusion_const)
         self.number_of_surf_conf=len(Species_information[0])
         self.number_of_diss_spec=len(Species_information[1])
-        self.isotherm=tuple(isotherm)
+        self.isotherm=tuple(float_a_list(isotherm))
         self.spectators=spectators
         self.spatial_info=Spatial_info
-        self.species_information=tuple(Species_information)
-        self.kin=tuple(kin)
+        self.species_information=tuple([float_a_list(lis) for lis in Species_information])
+        self.kin=tuple([float_a_list(lis) for lis in kin])
         self.kinetic_model = kinetic_model
-        self.safety_tuple = (create_copy_tuple(kin), create_copy_tuple(Species_information), tuple(cell_const), tuple(isotherm))
+        self.safety_tuple = (create_copy_tuple([float_a_list(lis) for lis in kin]), 
+                             create_copy_tuple([float_a_list(lis) for lis in Species_information]), 
+                             tuple(float_a_list(cell_const)), float_a_list(isotherm))
 
         spectators = [np.ones(len(Species_information[0])).tolist(),np.ones(len(Species_information[1])).tolist()]
         self.spectators = spectators
@@ -265,8 +271,16 @@ class ElectroKitty:
         return True
     
     def load_from_json(self, filename):
+        """
+        function to load class parameters from a .json file, given by filename.
+
+        Should be used for files created by electrokitty, but custom ones are possible.
+
+        """
+
         with open(filename, "r") as f:
             dict = json.load(f)
+
         self.string = dict["string"]
         self.kin = dict["kin"]
         self.isotherm = dict["isotherm"]

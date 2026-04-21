@@ -3,11 +3,9 @@ import numpy as np
 
 problem = ElectroKitty()
 
-a = np.zeros((1, 3))
-a[0, 0] = 0.5
-a[0, 1] = np.float32(100.0)
+a = [[np.float64(0.5), np.float64(0.5), np.float64(0.)]]
 
-problem.create_simulation(a, [293, 0, 0, 10**-4], 2*[10**-9], [], [0.0001, 10, 10**-5, 0], [[], [10, 0]])
+problem.create_simulation(a, [293, 0, 0, np.float32(10**-4)], 2*[10**-9], [], [0.0001, 10, 10**-5, 0], [[], [10, 0]])
 problem.V_potential(0.5, -0.5, 0.05, 0, 0, 1000)
 e, i, t = problem.simulate()
 problem.Plot_simulation()
