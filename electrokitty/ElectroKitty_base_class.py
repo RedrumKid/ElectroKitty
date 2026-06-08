@@ -116,12 +116,21 @@ class ElectroKitty:
             for arb in some_list:
                 copy.append(tuple(arb))
             return tuple(copy)
-            
+
+        spectators = [np.ones(len(Species_information[0])), np.ones(len(Species_information[1]))]
+        self.spectators = spectators
+        self.mechanism_list=self.Parser.Parse_mechanism()
+        
         self.cell_const=tuple(cell_const)
         self.diffusion_const=Diffusion_const
         self.number_of_surf_conf=len(Species_information[0])
         self.number_of_diss_spec=len(Species_information[1])
-        self.isotherm=tuple(isotherm)
+        # self.isotherm=tuple(isotherm)
+        if isinstance(isotherm[0], (list, tuple, np.ndarray)):
+            self.isotherm=tuple(isotherm)
+        else:
+            self.isotherm = tuple(self.update_isotherm(isotherm))
+            print(self.isotherm)
         self.spectators=spectators
         self.spatial_info=Spatial_info
         self.species_information=tuple(Species_information)
@@ -129,16 +138,37 @@ class ElectroKitty:
         self.kinetic_model = kinetic_model
         self.safety_tuple = (create_copy_tuple(kin), create_copy_tuple(Species_information), tuple(cell_const), tuple(isotherm))
 
-        spectators = [np.ones(len(Species_information[0])),np.ones(len(Species_information[1]))]
-        self.spectators = spectators
-        self.mechanism_list=self.Parser.Parse_mechanism()
         self.simulator.give_mechanism_list(self.mechanism_list)
         self.simulator.give_simulation_constants(self.kin, self.cell_const, 
                                                  self.diffusion_const, self.isotherm, 
                                                  self.spatial_info, self.species_information, kinetic_model=self.kinetic_model)
         
-        
-	
+    def update_isotherm(self, iso_list):
+         """
+        A funtion that converts the old isotherm list into a new one
+        """
+         
+         l = len(self.mechanism_list[0][0])
+         index = self.mechanism_list[1]
+         r_ind = self.mechanism_list[-2]
+         size = len(r_ind[0]) + len(r_ind[1]) + len(r_ind[2])
+
+
+         iso1 = np.zeros((size, 2, l))
+
+         inds = [0, 2]
+         for ind in inds:
+            for j in range(len(r_ind[ind])):
+                f, b = index[ind][j]
+                for el in f:
+                    if el < l:
+                        iso1[r_ind[ind][j]][0][el] = iso_list[el]
+                for el in b:
+                    if el < l:
+                        iso1[r_ind[ind][j]][1][el] = iso_list[el]
+
+         return iso1.tolist()
+
     def save(self, filename):
         """
         function to save all class parameters in a file.

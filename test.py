@@ -2,27 +2,28 @@
 from electrokitty import ElectroKitty
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 # %matplotlib Qt5
 
 mechanism = "E(1): a* = b* \n E(1): b* = c* \n C: a = b \n E(1): b = c \n E(1): c + c* = d*"
 
 kin = [[0.5, 1000, 0.4],
-       [0.5, 1000, -0.4],
-       [10, 100],
-       [0.5, 100, 0],
-       [0.5, 1000, -0.2]]
+       [0.5, 0*1000, -0.4],
+       [0*10, 100],
+       [0.5, 0*100, 0],
+       [0.5, 0*1000, -0.2]]
 
 ic = [[10**-5, 0, 0, 0], [1, 0, 0]]
 
 D = 3*[10**-9]
 
-# iso = [-6, -4, -1, -10]
+iso = [-6, -6, -1, -10]
 
-iso = [[[-6, -4, 0, 0], [-6, -4, 0, 0]],
-       [[0., -4, -1, 0], [0., -4, -1, 0]],
-       [[0, 0, 0, 0], [0, 0, 0, 0]],
-       [[0, 0, 0, 0], [0, 0, 0, 0]],
-       [[0, 0, -1, -10], [0, 0 , -1, -10]]]
+# iso = [[[-6, 0, 0, 0], [0, -6, 0, 0]],
+#        [[0., -4, 0, 0], [0, 0, -1, 0]],
+#        [[0, 0, 0, 0], [0, 0, 0, 0]],
+#        [[0, 0, 0, 0], [0, 0, 0, 0]],
+#        [[0, 0, -1, 0], [0, 0 , 0, -10]]]
 
 si = [0.001, 10, 10**-5, 0]
 
@@ -37,27 +38,44 @@ sim.create_simulation(kin, cc, D, iso, si, ic)
 sim.simulate()
 sim.Plot_simulation()
 
-# l = len(sim.mechanism_list[0][0])
-# index = sim.mechanism_list[1]
-# r_ind = sim.mechanism_list[-2]
-# size = len(r_ind[0]) + len(r_ind[1]) + len(r_ind[2])
+print(sim.isotherm)
+
+sys.exit()
+
+print(sim.isotherm)
+
+iso = [-6, -4, -1, -10]
+l = len(sim.mechanism_list[0][0])
+index = sim.mechanism_list[1]
+r_ind = sim.mechanism_list[-2]
+size = len(r_ind[0]) + len(r_ind[1]) + len(r_ind[2])
 
 # iso1 = size*[[l*[0], l*[0]]]
+iso1 = np.zeros((size, 2, l))
 
-# ind = 2
-
-# for j in range(len(r_ind[ind])):
-#     f, b = index[ind][j]
-#     print(iso1)
-#     for el in f:
-#         if el < l:
-#             print(iso1[r_ind[ind][j]])
-#             iso1[r_ind[ind][j]][0][el] = iso[el]
-#             iso1[r_ind[ind][j]][1][el] = iso[el]
-#     for el in b:
-#         if el < l:
+ind = 2
+print(len(r_ind[ind]))
+print(iso)
+for j in range(len(r_ind[ind])):
+    f, b = index[ind][j]
+    print()
+    print(f)
+    for el in f:
+        if el < l:
+       #      print(iso1[r_ind[ind][j]])
+            iso1[r_ind[ind][j]][0][el] = iso[el]
+       #      iso1[r_ind[ind][j]][1][el] = iso[el]
+    for el in b:
+        if el < l:
             
-#             iso1[r_ind[ind][j]][0][el] = iso[el]
-#             iso1[r_ind[ind][j]][1][el] = iso[el]
+       #      iso1[r_ind[ind][j]][0][el] = iso[el]
+            iso1[r_ind[ind][j]][1][el] = iso[el]
 
-# print(iso1)
+print()
+print(iso1.tolist())
+
+print()
+
+# print(iso2 == iso1)
+print()
+print(sim.mechanism_list)
