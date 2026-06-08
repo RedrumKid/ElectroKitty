@@ -2,7 +2,7 @@
 from electrokitty import ElectroKitty
 import numpy as np
 import matplotlib.pyplot as plt
-%matplotlib Qt5
+# %matplotlib Qt5
 
 mechanism = "E(1): a* = b* \n E(1): b* = c* \n C: a = b \n E(1): b = c \n E(1): c + c* = d*"
 
