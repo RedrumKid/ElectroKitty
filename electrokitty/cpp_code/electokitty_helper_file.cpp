@@ -280,8 +280,7 @@ struct Params{
                         forward_step = iterate_over_concentration(step[0], c, forward_step, isotherm);
                         backward_step = iterate_over_concentration(step[1], c, backward_step, isotherm);
 
-                        current += -forward_step + backward_step;
-                        current *= ec_kin_consts.el_nums[i];
+                        current += ec_kin_consts.el_nums[i] * (-forward_step + backward_step);
                 }
                 return current;
         }
