@@ -81,7 +81,6 @@ struct EC_kinetics{
         if (kinetic_model == "BV"){
           ks[0] = irreversible_types[i][0]*kin_const[i][1]*exp(-kin_const[i][0]*el_nums[i]*f*(E-kin_const[i][2]));
           ks[1] = irreversible_types[i][1]*kin_const[i][1]*exp((1-kin_const[i][0])*el_nums[i]*f*(E-kin_const[i][2]));
-
         }else if (kinetic_model == "MH"){
           double eta = kT*el_nums[i]*(E - kin_const[i][2]);
           double UI = trap(-20. + eta, 20. + eta, 100, eta, kin_const[i][0]*kT);
@@ -271,7 +270,7 @@ struct Params{
                 double forward_step;
                 double backward_step;
 
-                for (int i = 0; i<index[reaction_type].size(); i++){
+                for (int i = 0; i < index[reaction_type].size(); i++){
                         step = index[reaction_type][i];
                         cons = ec_kin_consts.calc_kinetics(E, i);
                         forward_step = cons[0];
@@ -654,7 +653,7 @@ struct MINPAC{
       temp = qtb[j];
       for ( i = j; i < n; i++ )
       {
-        wa1[i-1] = wa1[i-1] + r[l-1] * temp;
+        wa1[i] = wa1[i] + r[l] * temp;
         l = l + 1;
       }
       wa1[j] = wa1[j] / diag[j];

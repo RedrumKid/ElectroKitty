@@ -236,7 +236,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 
                 dt = time[1] - time[0];
 
-                if(number_of_diss_spec>0){
+                if(number_of_diss_spec > 0){
                         x_dir = space_ranges(time[time.size()-1], *max_element(diffusion_const.begin(), diffusion_const.end()),
                         spatial_info[0], int(spatial_info[1]));
                 }else{
@@ -244,17 +244,13 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                         spatial_info[0], int(spatial_info[1]));
                 }
 
-                velocity_c = -0.51/sqrt(spatial_info[2])*pow(2*PI*spatial_info[3],1.5);
+                velocity_c = -0.51/sqrt(spatial_info[2])*pow(2*PI*spatial_info[3], 1.5);
 
                 a = calc_main_coeficients(x_dir, dt, diffusion_const, int(x_dir.size())-2, velocity_c);
 
                 bound1 = calc_boundary_condition(x_dir, 0, diffusion_const, 3, velocity_c);
 
                 n = number_of_surf_conf+number_of_diss_spec*(int(x_dir.size()))+2;
-                /* double wa[( n * ( 3 * n + 13 ) ) / 2 + 100];
-                int lw = ( n * ( 3 * n + 13 ) ) / 2 + 100;
-                double x[number_of_surf_conf+number_of_diss_spec*(x_dir.size())+2];
-                double f[number_of_surf_conf+number_of_diss_spec*(x_dir.size())+2]; */
 
                 double wa[100000];
                 int lw = 100000;
@@ -278,7 +274,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                         bound2.push_back(species_info[1][i]);
                 }
 
-                for (int i = 1; i<time.size(); i++){
+                for (int i = 1; i < time.size(); i++){
                         delta_e.push_back((potential_program[i]-potential_program[i-1])/dt);
                 }
 
@@ -295,14 +291,25 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 }
                 
                 xp = params.copy_array_to_vec(x, n);
-
+                
                 vector<double> c_bound;
-                for (int tt = 0; tt<time.size(); tt++){
+
+                // first point is due to initial condition
+                xp = params.copy_array_to_vec(x, n);
+                c_bound = params.aslice(x, 0, number_of_diss_spec+number_of_surf_conf);
+                current.push_back(F*params.A*params.calc_current(2,c_bound,x[n-2]) + x[n-1]);
+                E_Corr.push_back(x[n-2]);
+                surface_profile.push_back(vslice(xp, 0, number_of_surf_conf));
+                concentration_profile.push_back(vslice(xp, number_of_surf_conf, n-2));
+
+                
+                for (int tt = 1; tt < time.size(); tt++){ // starting from second point
                         x[n-2] = potential_program[tt];
                         params.update_time_step(potential_program[tt], xp, delta_e[tt-1]);
                         info = hybrd1(n, x, f, 1e-16, wa, lw, params);
                         xp = params.copy_array_to_vec(x, n);
                         c_bound = params.aslice(x, 0, number_of_diss_spec+number_of_surf_conf);
+
                         current.push_back(F*params.A*params.calc_current(2,c_bound,x[n-2]) + x[n-1]);
                         E_Corr.push_back(x[n-2]);
                         surface_profile.push_back(vslice(xp, 0, number_of_surf_conf));
@@ -495,7 +502,7 @@ private:
                 double ga;
                 bound_slice = params.aslice(x, 0, params.n_ads+params.n_dis);
                 kinetics = params.sum_two_vectors(params.calc_kinetics(0, bound_slice, params.isotherm),
-                        params.calc_EC_kinetics(2,bound_slice, x[n-2]));
+                        params.calc_EC_kinetics(2, bound_slice, x[n-2]));
                 for(int i = 0; i < params.n_ads; i++){
                         f[i] = (x[i] - params.cp[i])/params.dt*params.eqilib - kinetics[i]*params.spectator[i];
                 }
