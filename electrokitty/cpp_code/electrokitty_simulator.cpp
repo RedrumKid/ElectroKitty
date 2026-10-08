@@ -295,9 +295,9 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 vector<double> c_bound;
 
                 // first point is due to initial condition
-                xp = params.copy_array_to_vec(x, n);
-                c_bound = params.aslice(x, 0, number_of_diss_spec+number_of_surf_conf);
-                current.push_back(F*params.A*params.calc_current(2,c_bound,x[n-2]) + x[n-1]);
+                // xp = params.copy_array_to_vec(x, n);
+                c_bound = params.aslice(x, 0, number_of_diss_spec + number_of_surf_conf);
+                current.push_back(0.);
                 E_Corr.push_back(x[n-2]);
                 surface_profile.push_back(vslice(xp, 0, number_of_surf_conf));
                 concentration_profile.push_back(vslice(xp, number_of_surf_conf, n-2));
@@ -308,7 +308,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                         params.update_time_step(potential_program[tt], xp, delta_e[tt-1]);
                         info = hybrd1(n, x, f, 1e-16, wa, lw, params);
                         xp = params.copy_array_to_vec(x, n);
-                        c_bound = params.aslice(x, 0, number_of_diss_spec+number_of_surf_conf);
+                        c_bound = params.aslice(x, 0, number_of_diss_spec + number_of_surf_conf);
 
                         current.push_back(F*params.A*params.calc_current(2,c_bound,x[n-2]) + x[n-1]);
                         E_Corr.push_back(x[n-2]);
