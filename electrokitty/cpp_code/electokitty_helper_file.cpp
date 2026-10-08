@@ -205,11 +205,11 @@ struct Params{
                 return b;
         }
 
-        vector<double> update_K_matrix(vector<double> k_matrix, double term_f, double term_b, vector<int> step, vector<double> stec_coefs){
-                vector<int> check;
+        vector<double> update_K_matrix(vector<double> k_matrix, double term_f, double term_b, vector<int> step, vector<double> stec_coefs, vector<int>* pcheck){
+                
                 for (int i = 0; i < int(step.size()); i++){
-                        if (find(check.begin(), check.end(), step[i]) == check.end() ){
-                                check.push_back(step[i]);
+                        if (find(*pcheck.begin(), *pcheck.end(), step[i]) == *pcheck.end()){
+                                *pcheck.push_back(step[i]);
                                 k_matrix[step[i]]+=-stec_coefs[step[i]]*term_f;
                                 k_matrix[step[i]]+=stec_coefs[step[i]]*term_b;
                         }
@@ -224,8 +224,9 @@ struct Params{
                 vector<double> cons;
                 double forward_step;
                 double backward_step;
+                vector<int> check;
 
-                for (int i = 0; i<index[reaction_type].size() ;i++){
+                for (int i = 0; i<index[reaction_type].size(); i++){
                         step = index[reaction_type][i];
                         cons = constants[reaction_type][i];
                         forward_step = cons[0];
@@ -233,8 +234,8 @@ struct Params{
 
                         forward_step = iterate_over_concentration(step[0], c, forward_step, iso);
                         backward_step = iterate_over_concentration(step[1], c, backward_step, iso);
-                        k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0], stechiometry_coefiecents[reaction_type][i]);
-                        k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1], stechiometry_coefiecents[reaction_type][i]);
+                        k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0], stechiometry_coefiecents[reaction_type][i], &check);
+                        k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1], stechiometry_coefiecents[reaction_type][i], &check);
                 }
                 return k_matrix;
         }
@@ -246,6 +247,7 @@ struct Params{
                 vector<double> cons;
                 double forward_step;
                 double backward_step;
+                vector<int> check;
 
                 for (int i = 0; i<index[reaction_type].size() ;i++){
                         step = index[reaction_type][i];
@@ -255,8 +257,8 @@ struct Params{
 
                         forward_step = iterate_over_concentration(step[0], c, forward_step, isotherm);
                         backward_step = iterate_over_concentration(step[1], c, backward_step, isotherm);
-                        k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0], stechiometry_coefiecents[reaction_type][i]);
-                        k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1], stechiometry_coefiecents[reaction_type][i]);
+                        k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0], stechiometry_coefiecents[reaction_type][i], &check);
+                        k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1], stechiometry_coefiecents[reaction_type][i], &check);
                 }
                 return k_matrix;
         }
