@@ -106,6 +106,7 @@ struct Params{
         int n_dis;
         double Ru, Cdl, A;
         double eqilib;
+        double ga_prev = 0.;
         vector<vector<double>> bound1;
         vector<double> bound2;
         vector<vector<vector<double>>> a;
@@ -182,10 +183,11 @@ struct Params{
                 ec_kin_consts.set_EC_constants(Temp, constants[2], els, kinetic_types, kinetic_model);
         }
 
-        void update_time_step(double nomp, vector<double> xp, double dE){
+        void update_time_step(double nomp, vector<double> xp, double dE, double ga){
                 pnom = nomp;
                 cp = xp;
                 delta = dE;
+                ga_prev = ga;
         }
 
         double iterate_over_concentration(vector<int> step, vector<double> c, double term, vector<double>isotherm){

@@ -183,7 +183,7 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 vector<double> xp;
                 vector<double> delta_e;
                 vector<vector<vector<double>>> a;
-                double dt, velocity_c;
+                double dt, velocity_c, i_kin_prev;
                 int n;
                 int iflag = 1;
                 int info;
@@ -301,16 +301,18 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 E_Corr.push_back(x[n-2]);
                 surface_profile.push_back(vslice(xp, 0, number_of_surf_conf));
                 concentration_profile.push_back(vslice(xp, number_of_surf_conf, n-2));
+                i_kin_prev = 0.;
 
                 
                 for (int tt = 1; tt < time.size(); tt++){ // starting from second point
                         x[n-2] = potential_program[tt];
-                        params.update_time_step(potential_program[tt], xp, delta_e[tt-1]);
+                        params.update_time_step(potential_program[tt], xp, delta_e[tt-1], i_kin_prev);
                         info = hybrd1(n, x, f, 1e-16, wa, lw, params);
                         xp = params.copy_array_to_vec(x, n);
                         c_bound = params.aslice(x, 0, number_of_diss_spec + number_of_surf_conf);
 
-                        current.push_back(F*params.A*params.calc_current(2,c_bound,x[n-2]) + x[n-1]);
+                        i_kin_prev = F*params.A*params.calc_current(2, c_bound, x[n-2]);
+                        current.push_back(i_kin_prev + x[n-1]);
                         E_Corr.push_back(x[n-2]);
                         surface_profile.push_back(vslice(xp, 0, number_of_surf_conf));
                         concentration_profile.push_back(vslice(xp, number_of_surf_conf, n-2));
@@ -500,9 +502,11 @@ private:
                 vector<double> bound_slice;
                 int spec_num;
                 double ga;
+
                 bound_slice = params.aslice(x, 0, params.n_ads+params.n_dis);
                 kinetics = params.sum_two_vectors(params.calc_kinetics(0, bound_slice, params.isotherm),
                         params.calc_EC_kinetics(2, bound_slice, x[n-2]));
+
                 for(int i = 0; i < params.n_ads; i++){
                         f[i] = (x[i] - params.cp[i])/params.dt*params.eqilib - kinetics[i]*params.spectator[i];
                 }
@@ -534,8 +538,11 @@ private:
                 ga = params.A*F*params.calc_current(2, bound_slice, x[n-2]);
 
                 f[n-2] = params.pnom - x[n-2] - params.Ru*ga - params.Ru*x[n-1];
+
                 f[n-1] = (1+params.A*params.Ru*params.Cdl/params.dt)*x[n-1] - params.A*params.Cdl*params.delta
-                         - params.Ru*params.A*params.Cdl*params.cp[n-1]/params.dt; 
+                         - params.Ru*params.A*params.Cdl*params.cp[n-1]/params.dt 
+                         + params.Ru*params.A*params.Cdl*(ga - params.ga_prev)/params.dt; 
+                // f[n-1] = x[n-1] - params.A*params.Cdl*(x[n-2] - params.cp[n-2])/params.dt;
                 
         }
 };

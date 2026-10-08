@@ -715,7 +715,7 @@ class python_electrokitty_simulator:
         A function for evaluating the butler-volmer kinetics 
         it transforms the given constants into function to be evaluated during simulation
         """
-        return [lambda E: el_num*k0*np.exp(-alpha*el_num*f*(E-E0)), lambda E:el_num*k0*np.exp((1-alpha)*el_num*f*(E-E0))]
+        return [lambda E: k0*np.exp(-alpha*el_num*f*(E-E0)), lambda E: k0*np.exp((1-alpha)*el_num*f*(E-E0))]
     
     def _Marcus_Hush_kinetics(self, lamb, k0, E0, T, el_num):
         
@@ -737,7 +737,7 @@ class python_electrokitty_simulator:
             lamb *= 1/kb/T
             UI = upper_integral(eta-20, eta+20, lamb, eta)
             
-            return num_el*k0*np.exp(-eta/2)*UI/li, num_el*k0*np.exp(eta/2)*UI/li
+            return k0*np.exp(-eta/2)*UI/li, num_el*k0*np.exp(eta/2)*UI/li
         
         LI = lower_integral(-20, 20, lamb/self.kb/T)
 
