@@ -9,7 +9,15 @@
 
 using namespace std;
 
+
+/*
+this file contains two objects and function that help the simulator
+*/
+
 struct Fit_Params{
+  /*
+  A depreciated function, delete in a clean up version. 
+  */
   vector<vector<double>> kinetics;
   vector<double> cell_params;
   vector<vector<double>> spec_info;
@@ -24,31 +32,52 @@ struct Fit_Params{
 };
 
 struct EC_kinetics{
-    double F = 96485.3321;
-    double R = 8.314;
-    double kb = 8.617333262e-5;
-    double kT;
-    double T;
-    double f;
-    string kinetic_model;
-    vector<vector<double>> kin_const;
-    vector<double> el_nums;
-    vector<double> LUs;
-    vector<vector<double>> irreversible_types;
+  /*
+  an object that takes care of calculating electrochemical kinetics. 
+
+  depending on the choice of a kinetic model will calculate the rate constants based on that.
+  Currently only Butler-Volmer (BV) and Marchs-Hush-Chidsey (MH) are supported. 
+  */
+    double F = 96485.3321; // Faraday constant
+    double R = 8.314; // gas constant
+    double kb = 8.617333262e-5; // boltzmann constant
+    double kT; // variable for multiplying boltzmann and temperature
+    double T; // temperature in K
+    double f; // electrochemical constant: F/R/T
+    string kinetic_model; // input for which kinetic model is chosen
+    vector<vector<double>> kin_const; // vector containing the forward and backward constant
+    vector<double> el_nums; // vector contaning the number of electrons transfered for each electrochemical reaction
+    vector<double> LUs; // Lower integral for MH model
+    vector<vector<double>> irreversible_types; // a vector of which reaction are irreversible to set either forward or backward reaction to 0
 
     void set_EC_constants(double Temp, vector<vector<double>> consts, 
     vector<double> els, vector<int> kinetic_types, string kin_model) {
+      /*
+      function to set and initilize the calculation of kinetics later in the simulation. 
+      the function takes the arguments and does all needed precalculation needed for the main loop to avoid excessive calculations during simulation
+
+      Input:
+      - double Temp: temperature in K
+      - vectro<vector<double>> consts: vector containing vectors with 3 elements for electrochemical kinetics [alpha or lambda, k0, E0]
+      - vector<double> els: vector of the number of electrons passed for each electrochemical reaction
+      - vector<int> kinetic_types: vector of types 0, 1, 2 to determine which reaction is reversible or irreversible
+      - string kin_model: either BV or MH to choose which model is used
+      */
+
+      // setting the constant and computing others from them
         T = Temp;
         kin_const = consts;
         f = F/R/T;
         kT = 1/kb/T;
         el_nums = els;
         kinetic_model = kin_model;
+        // if MH then compute the lower integral LU for each reaction
         if (kinetic_model == "MH"){
           for (int i = 0; i<int(consts.size()); i++){
             LUs.push_back(trap(-30., 30., 100, 0., kin_const[i][0]*kT));
           }
         }
+        // check reaction reversiblity and set f or b as 0
         vector<double> step_types(2);
         for (int i = 0; i<int(consts.size()); i++){
             step_types[0] = 1.;
@@ -63,10 +92,18 @@ struct EC_kinetics{
     }
 
     double integration_fun(double x, double eta, double lambd){
+      /* 
+      integration function for MH kinetics
+      */
       return exp(-pow(x-eta,2)/4./lambd)/2./cosh(x/2.);
     }
   
     double trap(double a, double b, int n, double eta, double lambd){
+      /*
+      function to calculate an integral numerically. 
+
+      Uses the trapezoid method. 
+      */
       double h = (b-a)/(n-1);
       double value = 0.5*(integration_fun(a, eta, lambd) + integration_fun(b, eta, lambd));
       for (int i = 2; i < n; i++){
@@ -77,13 +114,26 @@ struct EC_kinetics{
       }
 
     vector<double> calc_kinetics(double E, int i){
+      /*
+      calculates electrochemical rate constants for the chosen model at the specified potential. 
+
+      Input:
+      - double E: the potential to calculate for in V
+      - int i: the reaction index to calculate for.
+
+      Output:
+
+      - vector<double> ks, vector of size 2 with the f and b constant
+      */
         vector<double> ks(2);
         if (kinetic_model == "BV"){
+          // calculate based on the BV model
           ks[0] = irreversible_types[i][0]*kin_const[i][1]*exp(-kin_const[i][0]*el_nums[i]*f*(E-kin_const[i][2]));
           ks[1] = irreversible_types[i][1]*kin_const[i][1]*exp((1-kin_const[i][0])*el_nums[i]*f*(E-kin_const[i][2]));
         }else if (kinetic_model == "MH"){
+          // calculate for the MH model
           double eta = kT*el_nums[i]*(E - kin_const[i][2]);
-          double UI = trap(-20. + eta, 20. + eta, 100, eta, kin_const[i][0]*kT);
+          double UI = trap(-20. + eta, 20. + eta, 100, eta, kin_const[i][0]*kT); // upper integral calculation
           ks[0] = irreversible_types[i][0]*kin_const[i][1]*UI/LUs[i]*exp(-eta/2.) ;
           ks[1] = irreversible_types[i][1]*kin_const[i][1]*UI/LUs[i]*exp(eta/2.) ;
         }
@@ -93,38 +143,62 @@ struct EC_kinetics{
 };
 
 struct Params{
+  /*
+  object that updates the kinetics during the simulation.
+  as well as storing results from the previous time step, but only the previous.
+  */
         // spremenljivi
-        double pnom;
-        vector<double> cp;
-        double delta;
+        double pnom; // applied potential in V, the one from the potential program.
+        vector<double> cp; // previous concentration profile
+        double delta; // time derivative of applied potential dE/dt in V/s, for the step in calculation
 
         //nespremenljivi
-        double F = 96485.3321;
-        int nx;
-        double dt;
-        int n_ads;
-        int n_dis;
-        double Ru, Cdl, A;
-        double eqilib;
-        double ga_prev = 0.;
-        vector<vector<double>> bound1;
-        vector<double> bound2;
-        vector<vector<vector<double>>> a;
-        vector<double> null;
-        vector<vector<vector<double>>> constants;
-        vector<vector<vector<vector<int>>>> index;
-        vector<double> isotherm;
-        vector<double> spectator;
-        string kinetic_model;
+        double F = 96485.3321; // faraday constant
+        int nx; // number of spatial points
+        double dt; // difference between time points in s
+        int n_ads; // number of adsorbed species
+        int n_dis; // number of dissolved species
+        double Ru, Cdl, A; // uncompensated resistance [ohm], double-layer capacitance[F/m^2], area [m^2]
+        double eqilib; // a 0 to multiply the time derivative, not fully implemented
+        double ga_prev = 0.; // the faradic current from the previous time step
+        vector<vector<double>> bound1; // the boundary condition at the electrode, vector of vectors for the coefficients to calculate the first derivative in the spatial direction
+        vector<double> bound2; // boundary condition away from the electrode, equal to the initial condition
+        vector<vector<vector<double>>> a; // vector of the coefficients to calculate the second and first derivative for each spatial point for each species
+        vector<double> null; // 0s for the dissolved species so that isotherm is not relevant
+        vector<vector<vector<double>>> constants; // kinetic constants
+        vector<vector<vector<vector<int>>>> index; // index of which species are in which reaction
+        vector<double> isotherm; // vector for the isotherm constants
+        vector<double> spectator; // which species are spectators, currently not implemented
+        string kinetic_model; // BV or MH for the kinetic model
 
-        vector<vector<vector<double>>> stechiometry_coefiecents;
+        vector<vector<vector<double>>> stechiometry_coefiecents; // vector for the stechiometry coefficients for each reaction, not needed
 
-        EC_kinetics ec_kin_consts;
+        EC_kinetics ec_kin_consts; // create the object for electrochemical kinetics calcs.
 
         void set_params(int nnx, double ddt, int nn1, int nn,
         vector<vector<double>> bbound1, vector<double> bbound2, vector<vector<vector<double>>> aa,
         vector<double> nnull, vector<vector<vector<double>>> cconstants, vector<vector<vector<vector<int>>>> iindex,
         vector<double> iisotherm_constants, vector<double> sspectator, double eq, vector<double> cell_cs, string kin_model){
+          /*
+          function to set the parameters in the object and some initial precalc.
+
+          Input:
+          - int nnx: number of spatial points
+          - double ddt: the time difference
+          - int nn1: number of adsorbed species
+          - int nn: number of dissolved species
+          - vector<vector<double>> bbound1: the boundary condition coeficients at the electrode
+          - vector<double> bbound2: the concentrations at the far-out boundary
+          - vector<vector<vector<double>>> aa: coeficients for diffucion/convection calculation
+          - vector<double> nnull: 0s for the dissolved species
+          - vector<vector<vector<double>>> cconstants: rate constants
+          - vector<vector<vector<vector<int>>>> iindex: index of which reaction needs which species
+          - vector<double> iisotherm_constants: isotherm constants for the adsorbed species
+          - vector<double> sspectator: 0s and 1s for which species is a spectator (! not implements !)
+          - double eq: 0 for the equilibration step. not fully implemented
+          - vector<double> cell_cs: cell constants (T, Ru, Cdl, A)
+          - string kin_model: BV or MH to choose which kinetic model is used for the potential dependent kinetics calculation
+          */
                 nx = nnx;
                 dt = ddt;
                 n_ads = nn1;
@@ -142,7 +216,8 @@ struct Params{
                 A = cell_cs[3];
                 eqilib = eq;
                 kinetic_model = kin_model;
-
+                // calculates the stechiometry coefficients for each reaction depending on which type of reaction it is. 
+                // !! currently not used.
                 stechiometry_coefiecents = update_steciometry(stechiometry_coefiecents, index, 0, n_ads + n_dis);
                 stechiometry_coefiecents = update_steciometry(stechiometry_coefiecents, index, 1, n_dis);
                 stechiometry_coefiecents = update_steciometry(stechiometry_coefiecents, index, 2, n_ads + n_dis);
@@ -151,7 +226,10 @@ struct Params{
 
         vector<vector<vector<double>>> update_steciometry(vector<vector<vector<double>>> stec_coef, 
                 vector<vector<vector<vector<int>>>> index, int reac_type, int species_size){
-                // type, reaction, steps, indicies
+                /*
+                a function to create the steciometry coefficient for each reaction 
+                will be deleted in a future version.
+                */
                 vector<vector<double>> stech_info;
                 
 
@@ -180,10 +258,28 @@ struct Params{
         }
 
         void set_ec_params(double Temp, vector<double> els, vector<int> kinetic_types){
+          /*
+          function to set the electrochemical parameters in the object that calculates the rate constants
+
+          Intput: 
+          - double Temp: temperature in K
+          - vector<double> els: electrons for electrochemical reaction
+          - vector<int> kinetic_types: information on which reaction is irreversible or reversible
+          */
                 ec_kin_consts.set_EC_constants(Temp, constants[2], els, kinetic_types, kinetic_model);
         }
 
         void update_time_step(double nomp, vector<double> xp, double dE, double ga){
+          /*
+          at each time step record the newly computed changes for use in the next time step.
+          this just stores this in the class for later use. it is constantly updated
+
+          Input: 
+          - double nomp: the potential from the program to be used in the calculation
+          - vector<double> xp: the concentration profile
+          - double dE: the time derivative of potential at the time point to be computed
+          - double ga: the faradaic current
+          */
                 pnom = nomp;
                 cp = xp;
                 delta = dE;
@@ -191,16 +287,39 @@ struct Params{
         }
 
         double iterate_over_concentration(vector<int> step, vector<double> c, double term, vector<double>isotherm){
-                int j;
+          /*
+          a simple cunction to calculate the rate using the concentration at a certain point
+
+          Input:
+          - vector<int> step: contains the indexes for the species to be multiplied
+          - vector<double> c: the concentration slice if in the diffusion layer, or the electrtode slice if at the electrode
+          - double term: the term to be multiplied onto, begins as just the rate constant
+          - vector<double>isotherm: the isotherm params to be used
+
+          Outpu:
+
+          - double term: the calculated f or b rate, depending on what is chosen to be calculated
+          */
+                int j; // the index of the species
                 for(int i = 0; i<int(step.size()); i++){
-                        j = step[i];
-                        term*=c[j]*exp(-isotherm[j]*c[j]);
+                        j = step[i]; // iterating over the step to find the index
+                        term*=c[j]*exp(-isotherm[j]*c[j]); // multiply the term, adding the isotherm as an exponential term
                 }
-                return term;
+                return term; // return the newly calculated term
         }
 
         vector<double> copy_array_to_vec(double a[], int size){
-                vector<double> b;
+          /*
+          a helping function that takes an array and creates a vector that is the same
+
+          Input:
+          - double a: array of type double
+          - int size: size of the array
+
+          Output:
+          - vector<double> b: vector copy of the array
+          */
+                vector<double> b; 
                 for (int i = 0; i<size; i++){
                         b.push_back(a[i]);
                 }
@@ -208,19 +327,79 @@ struct Params{
         }
 
         vector<double> update_K_matrix(vector<double> k_matrix, double term_f, double term_b, vector<int> step, vector<double> stec_coefs){
-                vector<int> pcheck;
+          /*
+          taking the kinetic matrix at a point, update the elements for each species with the f and b rates.
+
+          !!! some polishing needed in later updates
+
+          Input:
+          - vector<double> k_matrix: the matrix to be updated
+          - double term_f: the forward term
+          - double term_b: the backward term
+          - vector<int> step: contains the indexes of which species need to have their rates updated
+          - vector<double> stec_coefs: stechiometry coefficients, currently not used
+
+          Output:
+          - vector<double> k_matrix: the updated matrix
+          */
                 for (int i = 0; i < int(step.size()); i++){
-                        if (find(pcheck.begin(), pcheck.end(), step[i]) == pcheck.end()){
-                                pcheck.push_back(step[i]);
-                                k_matrix[step[i]]+=-term_f;
-                                k_matrix[step[i]]+=term_b;
-                        }
+
+                  k_matrix[step[i]]+=-term_f;
+                  k_matrix[step[i]]+=term_b;
+
                 }
                 return k_matrix;
         }
 
         vector<double> calc_kinetics(int reaction_type, vector<double> c, vector<double> iso){
+          /*
+          taking the concentration profile at a slice, the isotherm and the type of reaction it is calculates the rates at that point
+          this function work only for NON-electrochemical reactions.
 
+          Input:
+          - int reaction_type: what type of reaction it is so that it can be taken from the index
+          - vector<double> c: the concentration slice at a point
+          - vector<double> iso: isotherm constants
+
+          Output:
+          - vector<double> k_matrix: the calculated rates for each species at the particular slice
+          */
+                vector<double> k_matrix(c.size()); // create the kinetic matrix of size equall to the number of species at the slice
+                vector<vector<int>> step; // the indexes for which species is in which reaction
+                vector<double> cons; // rate constants to be copied
+                double forward_step; // f_step rate
+                double backward_step; // b step rate
+
+                for (int i = 0; i < index[reaction_type].size(); i++){
+                  // iterate over all the reaction of a type given 
+                        step = index[reaction_type][i]; // get the step indexes
+                        cons = constants[reaction_type][i]; // copy the constants from the master rate constant list
+                        forward_step = cons[0]; // put the f constant as the f step
+                        backward_step = cons[1]; // put the b constant 
+
+                        forward_step = iterate_over_concentration(step[0], c, forward_step, iso); // multiply the rate constant with the needed concentrations
+                        backward_step = iterate_over_concentration(step[1], c, backward_step, iso);// same here just for the b step
+
+                        // update the k_matrix for the forward and backward step so that the differential equation is updated
+                        k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0], stechiometry_coefiecents[reaction_type][i]);
+                        k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1], stechiometry_coefiecents[reaction_type][i]);
+ 
+                }
+                return k_matrix;
+        }
+
+        vector<double> calc_EC_kinetics(int reaction_type, vector<double> c, double E){
+          /*
+          function to calculate the electrochemcial kinetics of a slice
+
+          Input:
+          - int reaction_type: what type of reaction it is so that it can be taken from the index
+          - vector<double> c: the concentration slice at a point
+          - double E: potential to be used to calculate the rates in V
+
+          Output:
+          - vector<double> k_matrix: the calculated rates for each species at the particular slice
+          */
                 vector<double> k_matrix(c.size());
                 vector<vector<int>> step;
                 vector<double> cons;
@@ -229,29 +408,7 @@ struct Params{
 
                 for (int i = 0; i<index[reaction_type].size(); i++){
                         step = index[reaction_type][i];
-                        cons = constants[reaction_type][i];
-                        forward_step = cons[0];
-                        backward_step = cons[1];
-
-                        forward_step = iterate_over_concentration(step[0], c, forward_step, iso);
-                        backward_step = iterate_over_concentration(step[1], c, backward_step, iso);
-                        k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0], stechiometry_coefiecents[reaction_type][i]);
-                        k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1], stechiometry_coefiecents[reaction_type][i]);
-                }
-                return k_matrix;
-        }
-
-        vector<double> calc_EC_kinetics(int reaction_type, vector<double> c, double E){
-
-                vector<double> k_matrix(c.size());
-                vector<vector<int>> step;
-                vector<double> cons;
-                double forward_step;
-                double backward_step;
-
-                for (int i = 0; i<index[reaction_type].size() ;i++){
-                        step = index[reaction_type][i];
-                        cons = ec_kin_consts.calc_kinetics(E, i);
+                        cons = ec_kin_consts.calc_kinetics(E, i); // calculate the rate constant for the potential
                         forward_step = cons[0];
                         backward_step = cons[1];
 
@@ -259,11 +416,23 @@ struct Params{
                         backward_step = iterate_over_concentration(step[1], c, backward_step, isotherm);
                         k_matrix = update_K_matrix(k_matrix, forward_step, backward_step, step[0], stechiometry_coefiecents[reaction_type][i]);
                         k_matrix = update_K_matrix(k_matrix, -forward_step, -backward_step, step[1], stechiometry_coefiecents[reaction_type][i]);
+
                 }
                 return k_matrix;
         }
 
         double calc_current(int reaction_type, vector<double> c, double E){
+          /*
+          function to calculate the current for a concentration slice
+
+          Input:
+          - int reaction_type: type of reaction, should always be set to electrochemical
+          - vector<double> c: concentration slice
+          - double E: potential to calculate the kinetics for
+
+          Output:
+          - double current: the faradaic current
+          */
                 double current = 0;
 
                 vector<double> k_matrix(c.size());
@@ -277,16 +446,29 @@ struct Params{
                         cons = ec_kin_consts.calc_kinetics(E, i);
                         forward_step = cons[0];
                         backward_step = cons[1];
-
+                        // calculate the kinetics for the reaction 
                         forward_step = iterate_over_concentration(step[0], c, forward_step, isotherm);
                         backward_step = iterate_over_concentration(step[1], c, backward_step, isotherm);
-
-                        current += ec_kin_consts.el_nums[i] * (-forward_step + backward_step);
+                        // use the kinetics to calculate the current
+                        current += ec_kin_consts.el_nums[i] * (-forward_step + backward_step); // multiplied with the number of electrons
                 }
                 return current;
         }
 
                 vector<double> sum_two_vectors(vector<double> a, vector<double> b){
+                  /*
+                  a function to sum two vectors together per point. 
+                  creates a third vetor of same size with the summations
+
+                  eg: a(i) + b(i) = c(i)
+
+                  Input:
+                  - vector<double> a: first vector
+                  - vector<double> b: second vector
+
+                  Output:
+                  - vector<double> c: summed vector 
+                  */
                 vector<double> c;
                 for (int i = 0; i<a.size(); i++){
                         c.push_back(a[i]+b[i]);
@@ -295,6 +477,16 @@ struct Params{
         }
 
         double vector_dot_product(vector<double> a, vector<double> b){
+          /* 
+          calculate the dot product of two vectors
+
+          Input:
+          - vector<double> a: first vector
+          - vector<double> b: second vector
+
+          Output:
+          - vector<double> c: dot product
+          */
                 double product = 0.;
                 for(int i = 0; i<int(a.size()); i++){
                         product+=a[i]*b[i];
@@ -303,16 +495,41 @@ struct Params{
         }
 
         vector<double> get_conc_at_pos(double x[], int spec_num, int first_pos, int last_pos, int num, int skip){
+          /*
+          function which finds the concentration slice at a certain position
+
+          Input:
+          - double x[]: array containing the concentration profile
+          - int spec_num: number of species in a slice
+          - int first_pos: position to start iterating from, need not be the actual index
+          - int last_pos: index to iterate to
+          - int num: number of species
+          - int skip: how much intigers to skip
+
+          Output:
+          - vector<double> c: concentration slice
+          */
                 vector<double> c;
-                for(int i = 0; i<(last_pos-first_pos); i++){
-                    c.push_back(x[skip+num*first_pos+spec_num + i*num]);
+                for(int i = 0; i < (last_pos - first_pos); i++){
+                    c.push_back(x[skip + num * first_pos + spec_num + i*num]);
                 }
                 return c;
         }
 
         vector<double> aslice(double x[], int i1, int i2){
+          /*
+          create a slice out of an array
+
+          Input: 
+          - double x[]: array to copy from
+          - int i1: index to iterate from
+          - int i2: index to iterate to
+
+          Output:
+          - vector<double> copy: copy of the slice
+          */
                 vector<double> copy;
-                for (int i = i1; i<i2; i++){
+                for (int i = i1; i < i2; i++){
                         copy.push_back(x[i]);
                 }
                 return copy;
