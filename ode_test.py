@@ -30,10 +30,10 @@ sol = sciint.solve_ivp(fun, [0, 30], [c1, c2])
 # plt.plot(sol.t, sols[0])
 # plt.plot(sol.t, sols[1])
 
-sim = ElectroKitty("E(1): a* = b* + b*")
+sim = ElectroKitty("C: a* + b*= b* + b*")
 
-sim.create_simulation([[0.5, 100, 0]], [293, 0, 0, 10**-4], [10**-9, 10**-9],
-                       [0, 0], [0.001, 25, 10**-5, 0], [[1, 0], [1, 0]])
+sim.create_simulation([[1, 0]], [293, 0, 0, 10**-4], [10**-9, 10**-9],
+                       [0, 0], [0.001, 25, 10**-5, 0], [[1, 1], [1, 0]])
 # sim.C_potential(0, max(sol.t), 1000)
 sim.V_potential(0.5, -0.5, 0.05, 0, 0, 1000)
 
