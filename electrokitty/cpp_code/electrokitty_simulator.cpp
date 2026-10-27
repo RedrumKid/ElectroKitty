@@ -333,13 +333,13 @@ The vectors are the same as with Python, except mechanism list, this one is chop
                 E_Corr.push_back(x[n-2]); // the first potential is always the one given by the potential program
                 surface_profile.push_back(vslice(xp, 0, number_of_surf_conf)); // store initial contidions
                 concentration_profile.push_back(vslice(xp, number_of_surf_conf, n-2));
-                i_kin_prev = 0.; // current is currently 0
+                i_kin_prev = F*params.A*params.calc_current(2, c_bound, x[n-2]); // current is currently 0
 
                 
                 for (int tt = 1; tt < time.size(); tt++){ // starting from second point
                         x[n-2] = potential_program[tt]; // update potential guess
                         params.update_time_step(potential_program[tt], xp, delta_e[tt-1], i_kin_prev); // store previous solution
-                        info = hybrd1(n, x, f, 1e-16, wa, lw, params); // solve the DAE set fot the time point
+                        info = hybrd1(n, x, f, 1e-12, wa, lw, params); // solve the DAE set fot the time point
                         xp = params.copy_array_to_vec(x, n); // copy the solution into a vector
                         c_bound = params.aslice(x, 0, number_of_diss_spec + number_of_surf_conf); // get the concentrations at the boundary
 
